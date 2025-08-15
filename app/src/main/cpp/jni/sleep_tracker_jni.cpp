@@ -1,14 +1,27 @@
-// sleep_tracker_jni.cpp - High-performance JNI bridge with error handling
+/**
+ * @file sleep_tracker_jni.cpp
+ * @brief Fixed JNI bridge for Puñuy Apu sleep detection
+ *
+ * High-performance JNI interface with proper error handling and type conversions.
+ * All C++ sleep detection processing exposed to Java layer.
+ *
+ * @author Puñuy Apu Development Team
+ * @version 1.0 - Phase 1A: C++ Core (Fixed)
+ */
+
 #include <jni.h>
 #include <android/log.h>
 #include <memory>
 #include <chrono>
 #include <string>
-#include <vector>
-#include <unordered_map>
+
+// Include our fixed headers
+#include "puuyapu_types.h"
 #include "sleep_detector.h"
 
-// Performance optimization: Global instances to avoid recreation overhead
+using namespace puuyapu;
+
+// Global instances to avoid recreation overhead (thread-safe)
 static std::unique_ptr<SleepDetector> g_sleepDetector;
 static std::mutex g_detectorMutex;
 
@@ -22,11 +35,11 @@ static jmethodID g_interruptionConstructor = nullptr;
 static std::unordered_map<std::string, std::chrono::microseconds> g_jniMetrics;
 static std::mutex g_metricsMutex;
 
+constexpr const char* JNI_LOG_TAG = "PuuyApu_JNI";
+
 /**
  * @brief Performance timing utility for JNI methods
- *
- * RAII class that automatically measures and records execution time
- * for JNI method calls to monitor performance in production.
+ * RAII class for automatic performance measurement
  */
 class JNIPerformanceTimer {
 private:
@@ -47,17 +60,15 @@ public:
         g_jniMetrics[operation_] = duration;
 
 #ifdef DEBUG
-        __android_log_print(ANDROID_LOG_DEBUG, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_DEBUG, JNI_LOG_TAG,
             "JNI %s took %ld microseconds", operation_.c_str(), duration.count());
 #endif
     }
 };
 
 /**
- * @brief Safe JNI array access with automatic cleanup
- *
- * RAII wrapper for JNI array operations that ensures proper release
- * and handles error conditions gracefully.
+ * @brief Safe JNI array access with automatic cleanup (FIXED)
+ * RAII wrapper that properly handles jboolean vs bool type conversion
  */
 template<typename T>
 class SafeJNIArray {
@@ -65,10 +76,10 @@ private:
     JNIEnv* env_;
     T* elements_;
     jarray array_;
-    bool isCopy_;
+    jboolean isCopy_;  // FIXED: Use jboolean instead of bool
 
 public:
-    SafeJNIArray(JNIEnv* env, jarray array) : env_(env), array_(array), isCopy_(false) {
+    SafeJNIArray(JNIEnv* env, jarray array) : env_(env), array_(array), isCopy_(JNI_FALSE) {
         if constexpr (std::is_same_v<T, jlong>) {
             elements_ = env_->GetLongArrayElements(static_cast<jlongArray>(array_), &isCopy_);
         } else if constexpr (std::is_same_v<T, jint>) {
@@ -92,18 +103,13 @@ public:
 
 /**
  * @brief Initialize JNI class references and method IDs
- *
- * Caches JNI class references and method IDs for performance.
- * Called once during library initialization.
- *
- * @param env JNI environment
- * @return true if initialization successful
+ * Caches JNI references for performance
  */
 bool initializeJNIReferences(JNIEnv* env) {
     // Cache SleepDetectionResult class and constructor
     jclass localSleepResultClass = env->FindClass("io/nava/puuyapu/app/models/SleepDetectionResult");
     if (!localSleepResultClass) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Failed to find SleepDetectionResult class");
         return false;
     }
@@ -113,7 +119,7 @@ bool initializeJNIReferences(JNIEnv* env) {
                                                 "(JJDILjava/util/List;DZ)V");
 
     if (!g_sleepResultConstructor) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Failed to find SleepDetectionResult constructor");
         return false;
     }
@@ -121,7 +127,7 @@ bool initializeJNIReferences(JNIEnv* env) {
     // Cache SleepInterruption class and constructor
     jclass localInterruptionClass = env->FindClass("io/nava/puuyapu/app/models/SleepInterruption");
     if (!localInterruptionClass) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Failed to find SleepInterruption class");
         return false;
     }
@@ -136,18 +142,12 @@ bool initializeJNIReferences(JNIEnv* env) {
 }
 
 /**
- * @brief Create Java SleepDetectionResult object from C++ result
- *
- * Converts C++ SleepDetectionResult to Java object for JNI return.
- * Handles null cases and creates proper Java collections.
- *
- * @param env JNI environment
- * @param result C++ detection result
- * @return Java SleepDetectionResult object or null on error
+ * @brief Create Java SleepDetectionResult object from C++ result (FIXED)
+ * Handles proper type conversions and null cases
  */
 jobject createJavaSleepResult(JNIEnv* env, const SleepDetectionResult& result) {
     if (!g_sleepResultClass || !g_sleepResultConstructor) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "JNI references not initialized");
         return nullptr;
     }
@@ -161,8 +161,8 @@ jobject createJavaSleepResult(JNIEnv* env, const SleepDetectionResult& result) {
         bedtimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(bedtimeEpoch).count();
     }
 
-    if (result.wakeTime.has_value()) {
-        auto wakeTimeEpoch = result.wakeTime.value().time_since_epoch();
+    if (result.wake_time.has_value()) {
+        auto wakeTimeEpoch = result.wake_time.value().time_since_epoch();
         wakeTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(wakeTimeEpoch).count();
     }
 
@@ -179,8 +179,8 @@ jobject createJavaSleepResult(JNIEnv* env, const SleepDetectionResult& result) {
         jlong interruptionMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 interruptionEpoch).count();
 
-        jlong durationMs = interruption.duration.count() * 60 * 1000; // Convert minutes to ms
-        jint interactionType = static_cast<jint>(interruption.interactionType);
+        jlong durationMs = interruption.duration.count();
+        jint interactionType = static_cast<jint>(interruption.cause);
 
         jobject javaInterruption = env->NewObject(g_interruptionClass, g_interruptionConstructor,
                                                   interruptionMs, durationMs, interactionType);
@@ -194,8 +194,8 @@ jobject createJavaSleepResult(JNIEnv* env, const SleepDetectionResult& result) {
     // Create main result object
     jdouble durationHours = result.duration.count();
     jint confidence = static_cast<jint>(result.confidence);
-    jdouble qualityScore = result.qualityScore;
-    jboolean isManuallyConfirmed = result.isManuallyConfirmed;
+    jdouble qualityScore = result.quality_score;
+    jboolean isManuallyConfirmed = result.is_manually_confirmed;
 
     jobject javaSleepResult = env->NewObject(g_sleepResultClass, g_sleepResultConstructor,
                                              bedtimeMs, wakeTimeMs, durationHours, confidence,
@@ -208,10 +208,12 @@ jobject createJavaSleepResult(JNIEnv* env, const SleepDetectionResult& result) {
     return javaSleepResult;
 }
 
+// ============================================================================
 // JNI Method Implementations
+// ============================================================================
 
-extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_initializeNative(
+extern "C" JNIEXPORT jboolean JNICALL
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_initializeNative(
         JNIEnv* env, jobject thiz) {
 
     JNIPerformanceTimer timer("initializeNative");
@@ -221,40 +223,38 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_initializeNative(
     try {
         // Initialize JNI references first
         if (!initializeJNIReferences(env)) {
-            __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+            __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                                 "Failed to initialize JNI references");
-            return;
+            return JNI_FALSE;
         }
 
         // Create sleep detector with default preferences
         UserPreferences defaultPrefs;
-        defaultPrefs.targetSleepHours = std::chrono::duration<double, std::ratio<3600>>(8.0);
-        defaultPrefs.minimumSleepDuration = std::chrono::hours(4);
-        defaultPrefs.enableInterruptionTracking = true;
-        defaultPrefs.enableSmartDetection = true;
-
         g_sleepDetector = std::make_unique<SleepDetector>(defaultPrefs);
 
-        __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG,
                             "Native sleep detector initialized successfully");
 
+        return JNI_TRUE;
+
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception during initialization: %s", e.what());
+        return JNI_FALSE;
     }
 }
 
-extern "C" JNIEXPORT jlong JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_addInteractionEvent(
+extern "C" JNIEXPORT jint JNICALL
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_addInteractionEvent(
         JNIEnv* env, jobject thiz,
         jlong timestamp, jint appType, jlong duration) {
 
     JNIPerformanceTimer timer("addInteractionEvent");
 
     if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Sleep detector not initialized");
-        return static_cast<jlong>(InteractionType::UNKNOWN);
+        return static_cast<jint>(InteractionType::UNKNOWN);
     }
 
     try {
@@ -264,7 +264,7 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_addInteractionEvent(
                 std::chrono::milliseconds(timestamp)
         );
         event.duration = std::chrono::milliseconds(duration);
-        event.appCategory = static_cast<AppCategory>(appType);
+        event.category = static_cast<AppCategory>(appType);
 
         // Classify interaction type based on duration and context
         if (duration < 30000) { // Less than 30 seconds
@@ -272,75 +272,34 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_addInteractionEvent(
         } else if (duration < 300000) { // Less than 5 minutes
             event.type = InteractionType::MEANINGFUL_USE;
         } else {
-            event.type = InteractionType::EXTENDED_SESSION;
+            event.type = InteractionType::EXTENDED_USE;
         }
 
         // Add event to detector for processing
         g_sleepDetector->addInteractionEvent(event);
 
-        return static_cast<jlong>(event.type);
+        return static_cast<jint>(event.type);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in addInteractionEvent: %s", e.what());
-        return static_cast<jlong>(InteractionType::UNKNOWN);
+        return static_cast<jint>(InteractionType::UNKNOWN);
     }
 }
 
 extern "C" JNIEXPORT jobject JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_detectSleep(
-        JNIEnv* env, jobject thiz,
-        jlongArray eventTimestamps, jintArray eventTypes) {
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_detectSleep(
+        JNIEnv* env, jobject thiz) {
 
     JNIPerformanceTimer timer("detectSleep");
 
     if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Sleep detector not initialized");
         return nullptr;
     }
 
-    if (!eventTimestamps || !eventTypes) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                            "Null arrays passed to detectSleep");
-        return nullptr;
-    }
-
     try {
-        // Get array lengths and validate they match
-        jsize timestampLength = env->GetArrayLength(eventTimestamps);
-        jsize typeLength = env->GetArrayLength(eventTypes);
-
-        if (timestampLength != typeLength) {
-            __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                                "Array length mismatch: timestamps=%d, types=%d",
-                                timestampLength, typeLength);
-            return nullptr;
-        }
-
-        // Use RAII for safe array access
-        SafeJNIArray<jlong> timestamps(env, eventTimestamps);
-        SafeJNIArray<jint> types(env, eventTypes);
-
-        if (!timestamps.isValid() || !types.isValid()) {
-            __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                                "Failed to get array elements");
-            return nullptr;
-        }
-
-        // Convert Java arrays to C++ vector (pre-allocate for performance)
-        std::vector<InteractionEvent> events;
-        events.reserve(timestampLength);
-
-        for (jsize i = 0; i < timestampLength; i++) {
-            InteractionEvent event;
-            event.timestamp = std::chrono::system_clock::time_point(
-                    std::chrono::milliseconds(timestamps.get()[i])
-            );
-            event.type = static_cast<InteractionType>(types.get()[i]);
-            events.emplace_back(std::move(event));
-        }
-
         // Perform sleep detection
         auto currentTime = std::chrono::system_clock::now();
         auto result = g_sleepDetector->detectSleepPeriod(currentTime);
@@ -349,21 +308,21 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_detectSleep(
         return createJavaSleepResult(env, result);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in detectSleep: %s", e.what());
         return nullptr;
     }
 }
 
 extern "C" JNIEXPORT jdouble JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_calculateConfidence(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_calculateConfidence(
         JNIEnv* env, jobject thiz,
         jlong bedtime, jlong wakeTime) {
 
     JNIPerformanceTimer timer("calculateConfidence");
 
     if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Sleep detector not initialized");
         return 0.0;
     }
@@ -374,14 +333,14 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_calculateConfidence(
         session.bedtime = std::chrono::system_clock::time_point(
                 std::chrono::milliseconds(bedtime)
         );
-        session.wakeTime = std::chrono::system_clock::time_point(
+        session.wake_time = std::chrono::system_clock::time_point(
                 std::chrono::milliseconds(wakeTime)
         );
 
         // Calculate duration
-        if (session.bedtime.has_value() && session.wakeTime.has_value()) {
+        if (session.bedtime.has_value() && session.wake_time.has_value()) {
             session.duration = std::chrono::duration<double, std::ratio<3600>>(
-                    calculateDurationHours(session.bedtime.value(), session.wakeTime.value())
+                    calculateDurationHours(session.bedtime.value(), session.wake_time.value())
             );
         }
 
@@ -389,122 +348,51 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_calculateConfidence(
         return static_cast<jdouble>(confidence);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in calculateConfidence: %s", e.what());
         return 0.0;
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_updateUserPreferences(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_updateUserPreferences(
         JNIEnv* env, jobject thiz,
         jdouble targetSleepHours, jlong preferredBedtime, jlong preferredWakeTime) {
 
     JNIPerformanceTimer timer("updateUserPreferences");
 
     if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Sleep detector not initialized");
         return;
     }
 
     try {
         UserPreferences preferences;
-        preferences.targetSleepHours = std::chrono::duration<double, std::ratio<3600>>(targetSleepHours);
-        preferences.preferredBedtime = std::chrono::system_clock::time_point(
-                std::chrono::milliseconds(preferredBedtime)
-        );
-        preferences.preferredWakeTime = std::chrono::system_clock::time_point(
-                std::chrono::milliseconds(preferredWakeTime)
-        );
-        preferences.enableInterruptionTracking = true;
-        preferences.enableSmartDetection = true;
+        preferences.target_sleep_hours = std::chrono::duration<double, std::ratio<3600>>(targetSleepHours);
+
+        // Convert timestamps to minutes since midnight
+        auto bedtime_tp = std::chrono::system_clock::time_point(std::chrono::milliseconds(preferredBedtime));
+        auto waketime_tp = std::chrono::system_clock::time_point(std::chrono::milliseconds(preferredWakeTime));
+
+        preferences.target_bedtime = getMinutesSinceMidnight(bedtime_tp);
+        preferences.target_wake_time = getMinutesSinceMidnight(waketime_tp);
+        preferences.weekday_bedtime = preferences.target_bedtime;
+        preferences.weekend_bedtime = preferences.target_bedtime;
 
         g_sleepDetector->updateUserPreferences(preferences);
 
-        __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG,
                             "User preferences updated: target=%.1f hours", targetSleepHours);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in updateUserPreferences: %s", e.what());
     }
 }
 
-extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_processBatchInteractions(
-        JNIEnv* env, jobject thiz,
-        jlongArray timestamps, jintArray appTypes, jlongArray durations) {
-
-    JNIPerformanceTimer timer("processBatchInteractions");
-
-    if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                            "Sleep detector not initialized");
-        return;
-    }
-
-    if (!timestamps || !appTypes || !durations) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                            "Null arrays passed to processBatchInteractions");
-        return;
-    }
-
-    try {
-        jsize length = env->GetArrayLength(timestamps);
-
-        // Validate all arrays have same length
-        if (env->GetArrayLength(appTypes) != length ||
-            env->GetArrayLength(durations) != length) {
-            __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                                "Array length mismatch in processBatchInteractions");
-            return;
-        }
-
-        // Use RAII for safe array access
-        SafeJNIArray<jlong> timestampArray(env, timestamps);
-        SafeJNIArray<jint> typeArray(env, appTypes);
-        SafeJNIArray<jlong> durationArray(env, durations);
-
-        if (!timestampArray.isValid() || !typeArray.isValid() || !durationArray.isValid()) {
-            __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                                "Failed to get array elements in processBatchInteractions");
-            return;
-        }
-
-        // Process events in batch for better performance
-        for (jsize i = 0; i < length; i++) {
-            InteractionEvent event;
-            event.timestamp = std::chrono::system_clock::time_point(
-                    std::chrono::milliseconds(timestampArray.get()[i])
-            );
-            event.appCategory = static_cast<AppCategory>(typeArray.get()[i]);
-            event.duration = std::chrono::milliseconds(durationArray.get()[i]);
-
-            // Classify interaction type
-            jlong durationMs = durationArray.get()[i];
-            if (durationMs < 30000) {
-                event.type = InteractionType::TIME_CHECK;
-            } else if (durationMs < 300000) {
-                event.type = InteractionType::MEANINGFUL_USE;
-            } else {
-                event.type = InteractionType::EXTENDED_SESSION;
-            }
-
-            g_sleepDetector->addInteractionEvent(event);
-        }
-
-        __android_log_print(ANDROID_LOG_DEBUG, "PuuyApu_JNI",
-                            "Processed batch of %d interaction events", length);
-
-    } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
-                            "Exception in processBatchInteractions: %s", e.what());
-    }
-}
-
 extern "C" JNIEXPORT jboolean JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_isCurrentlyAsleep(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_isCurrentlyAsleep(
         JNIEnv* env, jobject thiz) {
 
     JNIPerformanceTimer timer("isCurrentlyAsleep");
@@ -519,14 +407,14 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_isCurrentlyAsleep(
         return isAsleep ? JNI_TRUE : JNI_FALSE;
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in isCurrentlyAsleep: %s", e.what());
         return JNI_FALSE;
     }
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_getEstimatedSleepStart(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_getEstimatedSleepStart(
         JNIEnv* env, jobject thiz) {
 
     JNIPerformanceTimer timer("getEstimatedSleepStart");
@@ -547,14 +435,14 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_getEstimatedSleepStart(
         return 0;
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in getEstimatedSleepStart: %s", e.what());
         return 0;
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_clearOldData(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_clearOldData(
         JNIEnv* env, jobject thiz, jlong cutoffTimestamp) {
 
     JNIPerformanceTimer timer("clearOldData");
@@ -570,50 +458,48 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_clearOldData(
 
         g_sleepDetector->clearOldData(cutoffTime);
 
-        __android_log_print(ANDROID_LOG_DEBUG, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_DEBUG, JNI_LOG_TAG,
                             "Cleared data older than timestamp %lld", cutoffTimestamp);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in clearOldData: %s", e.what());
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_optimizeMemory(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_optimizeMemory(
         JNIEnv* env, jobject thiz) {
 
     JNIPerformanceTimer timer("optimizeMemory");
 
     try {
-        // Clear old performance metrics
+        if (g_sleepDetector) {
+            g_sleepDetector->optimizeMemory();
+        }
+
+        // Clear JNI performance metrics
         {
             std::lock_guard<std::mutex> lock(g_metricsMutex);
             g_jniMetrics.clear();
         }
 
-        // Clear old data (keep last 7 days)
-        auto cutoffTime = std::chrono::system_clock::now() - std::chrono::hours(24 * 7);
-        if (g_sleepDetector) {
-            g_sleepDetector->clearOldData(cutoffTime);
-        }
-
-        __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI", "Memory optimization completed");
+        __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG, "Memory optimization completed");
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in optimizeMemory: %s", e.what());
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_io_nava_puuyapu_native_NativeSleepTracker_confirmManualSleep(
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_confirmManualSleep(
         JNIEnv* env, jobject thiz, jlong timestamp) {
 
     JNIPerformanceTimer timer("confirmManualSleep");
 
     if (!g_sleepDetector) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Sleep detector not initialized");
         return;
     }
@@ -625,12 +511,52 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_confirmManualSleep(
 
         g_sleepDetector->confirmManualSleep(sleepTime);
 
-        __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG,
                             "Manual sleep confirmation recorded at timestamp %lld", timestamp);
 
     } catch (const std::exception& e) {
-        __android_log_print(ANDROID_LOG_ERROR, "PuuyApu_JNI",
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
                             "Exception in confirmManualSleep: %s", e.what());
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_io_nava_puuyapu_app_native_NativeSleepTracker_getPerformanceMetrics(
+        JNIEnv* env, jobject thiz) {
+
+    JNIPerformanceTimer timer("getPerformanceMetrics");
+
+    try {
+        // Create JSON string with performance metrics
+        std::string json = "{";
+
+        if (g_sleepDetector) {
+            auto metrics = g_sleepDetector->getPerformanceMetrics();
+            bool first = true;
+
+            for (const auto& [operation, duration] : metrics) {
+                if (!first) json += ",";
+                json += "\"" + operation + "\":" + std::to_string(duration.count());
+                first = false;
+            }
+
+            // Add JNI metrics
+            std::lock_guard<std::mutex> lock(g_metricsMutex);
+            for (const auto& [operation, duration] : g_jniMetrics) {
+                if (!first) json += ",";
+                json += "\"jni_" + operation + "\":" + std::to_string(duration.count());
+                first = false;
+            }
+        }
+
+        json += "}";
+
+        return env->NewStringUTF(json.c_str());
+
+    } catch (const std::exception& e) {
+        __android_log_print(ANDROID_LOG_ERROR, JNI_LOG_TAG,
+                            "Exception in getPerformanceMetrics: %s", e.what());
+        return env->NewStringUTF("{}");
     }
 }
 
@@ -638,7 +564,7 @@ Java_io_nava_puuyapu_native_NativeSleepTracker_confirmManualSleep(
 
 extern "C" JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void* reserved) {
-    __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI",
+    __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG,
                         "Native library loaded successfully");
     return JNI_VERSION_1_6;
 }
@@ -664,6 +590,6 @@ JNI_OnUnload(JavaVM* vm, void* reserved) {
         g_sleepDetector.reset();
     }
 
-    __android_log_print(ANDROID_LOG_INFO, "PuuyApu_JNI",
+    __android_log_print(ANDROID_LOG_INFO, JNI_LOG_TAG,
                         "Native library unloaded successfully");
 }
