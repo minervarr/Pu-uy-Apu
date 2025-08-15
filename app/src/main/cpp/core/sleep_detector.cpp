@@ -1,607 +1,433 @@
-// core/sleep_detector.cpp - High-performance sleep detection algorithms
-#include "../include/sleep_detector.h"
-#include <algorithm>
-#include <numeric>
-#include <cmath>
+// sleep_detector.h - Optimized high-performance sleep detection engine
+#pragma once
+
+#include <chrono>
+#include <vector>
+#include <optional>
+#include <memory>
 #include <unordered_map>
+#include <atomic>
+#include <mutex>
 #include <android/log.h>
 
-#define LOG_TAG "PuuyApu_SleepDetector"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-
-namespace puuyapu {
-
-/**
- * Sleep detection result structure
- * Contains all data from sleep analysis
- */
-    struct SleepDetectionResult {
-        bool sleep_detected;
-        std::chrono::system_clock::time_point bedtime;
-        std::chrono::system_clock::time_point wake_time;
-        std::chrono::minutes duration;
-        SleepConfidence confidence;
-        std::vector<SleepInterruption> interruptions;
-        double quality_score;
-        bool is_ongoing;  // True if sleep is currently happening
-
-        SleepDetectionResult()
-                : sleep_detected(false), confidence(SleepConfidence::VERY_LOW),
-                  quality_score(0.0), is_ongoing(false) {}
-    };
+// Performance optimization: Use compile-time constants
+namespace Constants {
+    constexpr std::chrono::hours MIN_SLEEP_DURATION{4};
+    constexpr std::chrono::minutes INTERACTION_TIMEOUT{30};
+    constexpr double HIGH_CONFIDENCE_THRESHOLD = 0.8;
+    constexpr double MEDIUM_CONFIDENCE_THRESHOLD = 0.5;
+    constexpr size_t MAX_EVENTS_CACHE = 10000;
+}
 
 /**
- * Time gap analysis structure
- * Used for detecting potential sleep periods
+ * @brief Enumeration for different types of phone interactions
+ *
+ * Categorizes user interactions to distinguish between meaningful usage
+ * and brief checks (like time checking) for accurate sleep detection.
  */
-    struct TimeGap {
-        std::chrono::system_clock::time_point start_time;
-        std::chrono::system_clock::time_point end_time;
-        std::chrono::milliseconds duration;
-        size_t interaction_count_before;
-        size_t interaction_count_after;
-        bool has_interruptions;
-
-        TimeGap(std::chrono::system_clock::time_point start,
-                std::chrono::system_clock::time_point end)
-                : start_time(start), end_time(end),
-                  duration(std::chrono::duration_cast<std::chrono::milliseconds>(end - start)),
-                  interaction_count_before(0), interaction_count_after(0),
-                  has_interruptions(false) {}
-    };
+enum class InteractionType : uint8_t {
+    UNKNOWN = 0,
+    TIME_CHECK = 1,           // Brief screen activation < 30 seconds
+    NOTIFICATION_CHECK = 2,    // Quick notification glance
+    MEANINGFUL_USE = 3,        // Extended app usage > 30 seconds
+    APP_LAUNCH = 4,           // New application started
+    EXTENDED_SESSION = 5      // Continuous usage > 5 minutes
+};
 
 /**
- * High-performance sleep detector implementation
- * Optimized for real-time processing on mobile devices
+ * @brief App category classification for context-aware detection
+ *
+ * Different app types have different implications for sleep detection.
+ * Entertainment apps used late suggest active wakefulness, while
+ * alarm/clock apps might indicate sleep preparation.
  */
-    class SleepDetector {
-    private:
-        UserPreferences preferences_;
-        std::vector<SleepSession> historical_sessions_;
-        std::unordered_map<std::string, double> pattern_weights_;
+enum class AppCategory : uint8_t {
+    UNKNOWN = 0,
+    COMMUNICATION = 1,        // WhatsApp, SMS, calls
+    ENTERTAINMENT = 2,        // YouTube, Netflix, games
+    PRODUCTIVITY = 3,         // Email, documents, work apps
+    SYSTEM = 4,              // Settings, clock, alarm
+    HEALTH = 5,              // Sleep apps, fitness trackers
+    SOCIAL_MEDIA = 6         // Instagram, Facebook, Twitter
+};
 
-        // Performance optimization: pre-allocated vectors
-        mutable std::vector<InteractionEvent> event_buffer_;
-        mutable std::vector<TimeGap> gap_buffer_;
-        mutable std::vector<SleepInterruption> interruption_buffer_;
+/**
+ * @brief Sleep detection confidence levels
+ *
+ * Indicates reliability of sleep period detection based on
+ * interaction patterns, manual confirmations, and historical data.
+ */
+enum class SleepConfidence : uint8_t {
+    LOW = 0,      // Uncertain detection, possible false positive
+    MEDIUM = 1,   // Good pattern match, likely accurate
+    HIGH = 2      // Strong confidence with manual confirmation or clear pattern
+};
 
-        // Caching for performance
-        mutable std::chrono::system_clock::time_point last_calculation_time_;
-        mutable SleepDetectionResult cached_result_;
-        mutable bool cache_valid_;
+/**
+ * @brief Individual interaction event with optimized memory layout
+ *
+ * Represents a single phone interaction event. Memory layout is optimized
+ * for cache efficiency with most frequently accessed fields first.
+ */
+struct InteractionEvent {
+    std::chrono::system_clock::time_point timestamp;  // 8 bytes - most important
+    std::chrono::milliseconds duration;                // 8 bytes
+    InteractionType type;                              // 1 byte
+    AppCategory appCategory;                           // 1 byte
+    uint16_t appId;                                   // 2 bytes - for app identification
 
-    public:
-        /**
-         * Constructor with user preferences
-         */
-        explicit SleepDetector(const UserPreferences& prefs = UserPreferences())
-                : preferences_(prefs), cache_valid_(false) {
+    // Padding to align to 8-byte boundary for better cache performance
+    uint32_t _padding;
 
-            // Initialize pattern weights for confidence calculation
-            initializePatternWeights();
+    /**
+     * @brief Check if this interaction represents meaningful phone usage
+     * @return true if interaction indicates active phone use vs brief check
+     */
+    inline bool isMeaningfulUsage() const noexcept {
+        return type == InteractionType::MEANINGFUL_USE ||
+               type == InteractionType::APP_LAUNCH ||
+               type == InteractionType::EXTENDED_SESSION;
+    }
 
-            // Pre-allocate vectors for performance
-            event_buffer_.reserve(1000);
-            gap_buffer_.reserve(50);
-            interruption_buffer_.reserve(20);
+    /**
+     * @brief Check if interaction duration exceeds time check threshold
+     * @return true if interaction lasted longer than typical time check
+     */
+    inline bool exceedsTimeCheckDuration() const noexcept {
+        return duration > Constants::INTERACTION_TIMEOUT;
+    }
+};
 
-            LOGD("SleepDetector initialized with target sleep: %ld minutes",
-                 preferences_.target_sleep_duration.count());
+/**
+ * @brief Sleep interruption during a sleep period
+ *
+ * Represents brief awakenings during sleep that don't constitute
+ * the end of the sleep session. Important for sleep quality analysis.
+ */
+struct SleepInterruption {
+    std::chrono::system_clock::time_point timestamp;
+    std::chrono::minutes duration;
+    InteractionType interactionType;
+    bool isTimeCheck;           // True if likely just checking time
+    double impactScore;         // 0.0-1.0, impact on sleep quality
+};
+
+/**
+ * @brief Complete sleep detection result with confidence metrics
+ *
+ * Contains all information about a detected sleep period including
+ * timing, quality metrics, and confidence assessment.
+ */
+struct SleepDetectionResult {
+    std::optional<std::chrono::system_clock::time_point> bedtime;
+    std::optional<std::chrono::system_clock::time_point> wakeTime;
+    std::chrono::duration<double, std::ratio<3600>> duration{0}; // Hours as double
+    SleepConfidence confidence{SleepConfidence::LOW};
+    std::vector<SleepInterruption> interruptions;
+    double qualityScore{0.0};      // 0.0-1.0, overall sleep quality
+    bool isManuallyConfirmed{false}; // User pressed "Going to Sleep" button
+
+    /**
+     * @brief Check if sleep detection result is valid
+     * @return true if both bedtime and wake time are detected and duration > minimum
+     */
+    bool isValid() const noexcept {
+        return bedtime.has_value() &&
+               wakeTime.has_value() &&
+               duration >= Constants::MIN_SLEEP_DURATION;
+    }
+
+    /**
+     * @brief Get human-readable confidence description
+     * @return string representation of confidence level
+     */
+    const char* getConfidenceString() const noexcept {
+        switch (confidence) {
+            case SleepConfidence::HIGH: return "High";
+            case SleepConfidence::MEDIUM: return "Medium";
+            case SleepConfidence::LOW: return "Low";
+            default: return "Unknown";
         }
-
-        /**
-         * Main sleep detection algorithm
-         * Analyzes interaction patterns to detect sleep periods
-         *
-         * @param events Vector of interaction events (must be sorted by timestamp)
-         * @param current_time Current system time for real-time analysis
-         * @return Complete sleep detection result
-         */
-        SleepDetectionResult detectSleepPeriod(
-                const std::vector<InteractionEvent>& events,
-                const std::chrono::system_clock::time_point& current_time) const {
-
-            // Performance optimization: check cache validity
-            if (cache_valid_ &&
-                std::chrono::duration_cast<std::chrono::minutes>(
-                        current_time - last_calculation_time_).count() < 5) {
-                return cached_result_;
-            }
-
-            LOGD("Starting sleep detection for %zu events", events.size());
-
-            SleepDetectionResult result;
-
-            if (events.empty()) {
-                return result;
-            }
-
-            // Step 1: Find significant interaction gaps
-            auto gaps = findInteractionGaps(events, current_time);
-
-            if (gaps.empty()) {
-                LOGD("No significant gaps found");
-                return result;
-            }
-
-            // Step 2: Analyze each gap for sleep likelihood
-            auto best_sleep_gap = findBestSleepCandidate(gaps, events);
-
-            if (!best_sleep_gap.has_value()) {
-                LOGD("No valid sleep candidate found");
-                return result;
-            }
-
-            // Step 3: Analyze interruptions during sleep period
-            auto interruptions = analyzeInterruptions(
-                    events, best_sleep_gap->start_time, best_sleep_gap->end_time);
-
-            // Step 4: Calculate confidence score
-            double confidence_score = calculateConfidenceScore(
-                    *best_sleep_gap, interruptions, events);
-
-            // Step 5: Build result
-            result.sleep_detected = confidence_score >= preferences_.confidence_threshold;
-            result.bedtime = best_sleep_gap->start_time;
-            result.wake_time = best_sleep_gap->end_time;
-            result.duration = std::chrono::duration_cast<std::chrono::minutes>(
-                    best_sleep_gap->duration);
-            result.confidence = scoreToConfidenceLevel(confidence_score);
-            result.interruptions = interruptions;
-            result.quality_score = calculateSleepQuality(*best_sleep_gap, interruptions);
-            result.is_ongoing = isCurrentlyAsleep(events, current_time);
-
-            // Cache result for performance
-            cached_result_ = result;
-            last_calculation_time_ = current_time;
-            cache_valid_ = true;
-
-            LOGI("Sleep detection complete: %s, confidence: %.2f, duration: %ld min",
-                 result.sleep_detected ? "YES" : "NO",
-                 confidence_score, result.duration.count());
-
-            return result;
-        }
-
-        /**
-         * Real-time check if user is currently asleep
-         * Optimized for frequent calls
-         */
-        bool isCurrentlyAsleep(
-                const std::vector<InteractionEvent>& events,
-                const std::chrono::system_clock::time_point& current_time) const {
-
-            if (events.empty()) return false;
-
-            // Check time since last meaningful interaction
-            auto last_meaningful = findLastMeaningfulInteraction(events);
-            if (!last_meaningful.has_value()) return false;
-
-            auto time_since_last = current_time - last_meaningful->timestamp;
-            auto gap_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    time_since_last);
-
-            // Quick check: if gap is shorter than minimum, definitely not asleep
-            if (gap_duration < preferences_.minimum_interaction_gap) {
-                return false;
-            }
-
-            // Advanced check: analyze recent pattern
-            return analyzeRecentPatternForSleep(events, current_time);
-        }
-
-        /**
-         * Update user preferences for personalized detection
-         */
-        void updatePreferences(const UserPreferences& new_preferences) {
-            preferences_ = new_preferences;
-            cache_valid_ = false; // Invalidate cache
-
-            LOGD("Preferences updated - target sleep: %ld minutes",
-                 preferences_.target_sleep_duration.count());
-        }
-
-        /**
-         * Add historical sleep session for pattern learning
-         */
-        void addHistoricalSession(const SleepSession& session) {
-            if (session.isValid()) {
-                historical_sessions_.push_back(session);
-
-                // Keep only recent sessions for performance (last 30 days)
-                if (historical_sessions_.size() > 30) {
-                    historical_sessions_.erase(historical_sessions_.begin());
-                }
-
-                cache_valid_ = false; // Patterns changed, invalidate cache
-            }
-        }
-
-    private:
-        /**
-         * Initialize pattern weights for confidence calculation
-         */
-        void initializePatternWeights() {
-            pattern_weights_["duration_match"] = 0.25;      // How well duration matches target
-            pattern_weights_["timing_consistency"] = 0.20;   // Consistency with historical timing
-            pattern_weights_["gap_quality"] = 0.20;         // Quality of interaction gap
-            pattern_weights_["interruption_penalty"] = 0.15; // Penalty for many interruptions
-            pattern_weights_["manual_confirmation"] = 0.20;  // Bonus for manual confirmation
-        }
-
-        /**
-         * Find significant gaps in interaction timeline
-         * Returns gaps that could potentially be sleep periods
-         */
-        std::vector<TimeGap> findInteractionGaps(
-                const std::vector<InteractionEvent>& events,
-                const std::chrono::system_clock::time_point& current_time) const {
-
-            gap_buffer_.clear();
-
-            if (events.size() < 2) return gap_buffer_;
-
-            // Find gaps between consecutive meaningful interactions
-            auto prev_meaningful = events.begin();
-
-            for (auto it = events.begin() + 1; it != events.end(); ++it) {
-                // Skip time checks and very brief interactions
-                if (!it->isMeaningfulUse()) continue;
-
-                auto gap_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        it->timestamp - prev_meaningful->timestamp);
-
-                // Check if gap is significant enough to be sleep
-                if (gap_duration >= preferences_.minimum_interaction_gap) {
-                    TimeGap gap(prev_meaningful->timestamp, it->timestamp);
-                    gap_buffer_.push_back(gap);
-                }
-
-                prev_meaningful = it;
-            }
-
-            // Check gap from last interaction to current time
-            if (!events.empty()) {
-                auto last_event = findLastMeaningfulInteraction(events);
-                if (last_event.has_value()) {
-                    auto final_gap = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - last_event->timestamp);
-
-                    if (final_gap >= preferences_.minimum_interaction_gap) {
-                        TimeGap gap(last_event->timestamp, current_time);
-                        gap_buffer_.push_back(gap);
-                    }
-                }
-            }
-
-            LOGD("Found %zu potential sleep gaps", gap_buffer_.size());
-            return gap_buffer_;
-        }
-
-        /**
-         * Find the most likely sleep candidate from detected gaps
-         */
-        std::optional<TimeGap> findBestSleepCandidate(
-                const std::vector<TimeGap>& gaps,
-                const std::vector<InteractionEvent>& events) const {
-
-            if (gaps.empty()) return std::nullopt;
-
-            double best_score = 0.0;
-            std::optional<TimeGap> best_candidate;
-
-            for (const auto& gap : gaps) {
-                double score = evaluateGapAsSleep(gap, events);
-
-                if (score > best_score) {
-                    best_score = score;
-                    best_candidate = gap;
-                }
-            }
-
-            LOGD("Best sleep candidate score: %.2f", best_score);
-            return best_candidate;
-        }
-
-        /**
-         * Evaluate how likely a gap is to represent actual sleep
-         */
-        double evaluateGapAsSleep(const TimeGap& gap,
-                                  const std::vector<InteractionEvent>& events) const {
-            double score = 0.0;
-
-            // Factor 1: Duration appropriateness (prefer 4-12 hour gaps)
-            auto hours = std::chrono::duration_cast<std::chrono::hours>(gap.duration).count();
-            if (hours >= 4 && hours <= 12) {
-                score += 0.3;
-                // Bonus for duration close to target
-                auto target_hours = preferences_.target_sleep_duration.count() / 60.0;
-                double duration_match = 1.0 - std::abs(hours - target_hours) / target_hours;
-                score += duration_match * 0.2;
-            } else if (hours < 4) {
-                score -= 0.2; // Penalty for too short
-            }
-
-            // Factor 2: Timing consistency with historical patterns
-            score += evaluateTimingConsistency(gap);
-
-            // Factor 3: Activity patterns before/after gap
-            score += evaluateActivityPatterns(gap, events);
-
-            // Factor 4: Day of week considerations
-            score += evaluateDayOfWeekPattern(gap);
-
-            return std::max(0.0, std::min(1.0, score));
-        }
-
-        /**
-         * Analyze interruptions during a potential sleep period
-         */
-        std::vector<SleepInterruption> analyzeInterruptions(
-                const std::vector<InteractionEvent>& events,
-                const std::chrono::system_clock::time_point& sleep_start,
-                const std::chrono::system_clock::time_point& sleep_end) const {
-
-            interruption_buffer_.clear();
-
-            // Find events that occurred during the sleep period
-            for (const auto& event : events) {
-                if (event.timestamp > sleep_start && event.timestamp < sleep_end) {
-                    SleepInterruption interruption(
-                            event.timestamp, event.duration, event.type, event.category);
-                    interruption_buffer_.push_back(interruption);
-                }
-            }
-
-            LOGD("Found %zu interruptions during sleep period", interruption_buffer_.size());
-            return interruption_buffer_;
-        }
-
-        /**
-         * Calculate confidence score for detected sleep period
-         */
-        double calculateConfidenceScore(
-                const TimeGap& sleep_gap,
-                const std::vector<SleepInterruption>& interruptions,
-                const std::vector<InteractionEvent>& events) const {
-
-            double score = 0.0;
-
-            // Base score from gap evaluation
-            score += evaluateGapAsSleep(sleep_gap, events) * 0.4;
-
-            // Pattern matching with historical data
-            score += evaluateHistoricalPatternMatch(sleep_gap) * 0.3;
-
-            // Interruption analysis
-            score += evaluateInterruptionPattern(interruptions) * 0.2;
-
-            // Manual confirmation bonus
-            if (hasManualConfirmation(events, sleep_gap)) {
-                score += 0.1;
-            }
-
-            return std::max(0.0, std::min(1.0, score));
-        }
-
-        /**
-         * Calculate sleep quality score based on duration and interruptions
-         */
-        double calculateSleepQuality(
-                const TimeGap& sleep_gap,
-                const std::vector<SleepInterruption>& interruptions) const {
-
-            double quality = 1.0; // Start with perfect quality
-
-            // Duration factor
-            auto hours = std::chrono::duration_cast<std::chrono::hours>(
-                    sleep_gap.duration).count();
-            auto target_hours = preferences_.target_sleep_duration.count() / 60.0;
-
-            if (hours < target_hours * 0.8) {
-                quality -= 0.2; // Penalty for too little sleep
-            } else if (hours > target_hours * 1.3) {
-                quality -= 0.1; // Small penalty for too much sleep
-            }
-
-            // Interruption factor
-            size_t brief_interruptions = 0;
-            size_t long_interruptions = 0;
-
-            for (const auto& interruption : interruptions) {
-                if (interruption.is_brief_check) {
-                    brief_interruptions++;
-                } else {
-                    long_interruptions++;
-                }
-            }
-
-            // Penalty for interruptions
-            quality -= brief_interruptions * 0.05;   // 5% per brief interruption
-            quality -= long_interruptions * 0.15;    // 15% per long interruption
-
-            return std::max(0.0, std::min(1.0, quality));
-        }
-
-        /**
-         * Helper functions for pattern analysis
-         */
-        std::optional<InteractionEvent> findLastMeaningfulInteraction(
-                const std::vector<InteractionEvent>& events) const {
-
-            for (auto it = events.rbegin(); it != events.rend(); ++it) {
-                if (it->isMeaningfulUse()) {
-                    return *it;
-                }
-            }
-            return std::nullopt;
-        }
-
-        double evaluateTimingConsistency(const TimeGap& gap) const {
-            // Compare gap timing with historical sleep patterns
-            // This is a simplified version - could be enhanced with ML
-
-            auto gap_start_hour = std::chrono::duration_cast<std::chrono::hours>(
-                    gap.start_time.time_since_epoch()).count() % 24;
-
-            // Prefer gaps that start during typical bedtime hours (20:00-02:00)
-            if ((gap_start_hour >= 20 && gap_start_hour <= 23) ||
-                (gap_start_hour >= 0 && gap_start_hour <= 2)) {
-                return 0.2;
-            } else if (gap_start_hour >= 3 && gap_start_hour <= 6) {
-                return 0.1; // Some people go to bed very late
-            }
-
-            return 0.0;
-        }
-
-        double evaluateActivityPatterns(const TimeGap& gap,
-                                        const std::vector<InteractionEvent>& events) const {
-            // Analyze activity before and after the gap
-            // High activity before bedtime and after wake time is good
-
-            double score = 0.0;
-
-            // Count interactions in the hour before gap
-            auto hour_before = gap.start_time - std::chrono::hours(1);
-            size_t pre_sleep_activity = 0;
-
-            for (const auto& event : events) {
-                if (event.timestamp >= hour_before &&
-                    event.timestamp <= gap.start_time &&
-                    event.isMeaningfulUse()) {
-                    pre_sleep_activity++;
-                }
-            }
-
-            // Moderate activity before sleep is good (not too much, not too little)
-            if (pre_sleep_activity >= 2 && pre_sleep_activity <= 8) {
-                score += 0.1;
-            }
-
-            return score;
-        }
-
-        double evaluateDayOfWeekPattern(const TimeGap& gap) const {
-            // Different patterns for weekdays vs weekends
-            auto time_t = std::chrono::system_clock::to_time_t(gap.start_time);
-            auto tm = *std::localtime(&time_t);
-
-            // Weekend nights might have later bedtimes
-            if (tm.tm_wday == 5 || tm.tm_wday == 6) { // Friday or Saturday
-                return 0.05; // Small bonus for weekend flexibility
-            }
-
-            return 0.0;
-        }
-
-        double evaluateHistoricalPatternMatch(const TimeGap& gap) const {
-            if (historical_sessions_.empty()) return 0.0;
-
-            // Compare with recent historical patterns
-            double similarity_sum = 0.0;
-            size_t valid_comparisons = 0;
-
-            for (const auto& session : historical_sessions_) {
-                if (session.confidence == SleepConfidence::HIGH ||
-                    session.confidence == SleepConfidence::VERY_HIGH) {
-
-                    auto historical_duration = session.actual_sleep_duration;
-                    auto gap_duration = std::chrono::duration_cast<std::chrono::minutes>(
-                            gap.duration);
-
-                    // Calculate similarity (1.0 = identical, 0.0 = very different)
-                    double duration_diff = std::abs(
-                            historical_duration.count() - gap_duration.count());
-                    double similarity = std::max(0.0,
-                                                 1.0 - (duration_diff / historical_duration.count()));
-
-                    similarity_sum += similarity;
-                    valid_comparisons++;
-                }
-            }
-
-            if (valid_comparisons > 0) {
-                return (similarity_sum / valid_comparisons) * 0.2;
-            }
-
-            return 0.0;
-        }
-
-        double evaluateInterruptionPattern(
-                const std::vector<SleepInterruption>& interruptions) const {
-
-            if (interruptions.empty()) {
-                return 0.2; // Bonus for uninterrupted sleep
-            }
-
-            double score = 0.1; // Base score for some interruptions
-
-            // Count brief vs long interruptions
-            size_t brief_count = 0;
-            for (const auto& interruption : interruptions) {
-                if (interruption.is_brief_check) {
-                    brief_count++;
-                }
-            }
-
-            // Brief interruptions are more acceptable
-            double brief_ratio = static_cast<double>(brief_count) / interruptions.size();
-            score += brief_ratio * 0.1;
-
-            // Penalty for too many interruptions
-            if (interruptions.size() > 5) {
-                score -= 0.1;
-            }
-
-            return std::max(0.0, score);
-        }
-
-        bool hasManualConfirmation(const std::vector<InteractionEvent>& events,
-                                   const TimeGap& gap) const {
-
-            // Look for sleep confirmation event near the gap start
-            auto search_window = std::chrono::minutes(30);
-
-            for (const auto& event : events) {
-                if (event.type == InteractionType::SLEEP_CONFIRMATION &&
-                    event.timestamp >= (gap.start_time - search_window) &&
-                    event.timestamp <= (gap.start_time + search_window)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        bool analyzeRecentPatternForSleep(
-                const std::vector<InteractionEvent>& events,
-                const std::chrono::system_clock::time_point& current_time) const {
-
-            // Advanced pattern analysis for real-time sleep detection
-            // This could be enhanced with ML models in Phase 4
-
-            auto last_hour = current_time - std::chrono::hours(1);
-            size_t recent_activity = 0;
-
-            for (const auto& event : events) {
-                if (event.timestamp >= last_hour && event.isMeaningfulUse()) {
-                    recent_activity++;
-                }
-            }
-
-            // If very low activity in the last hour, likely asleep
-            return recent_activity <= 1;
-        }
-
-        SleepConfidence scoreToConfidenceLevel(double score) const {
-            if (score >= 0.9) return SleepConfidence::VERY_HIGH;
-            if (score >= 0.75) return SleepConfidence::HIGH;
-            if (score >= 0.5) return SleepConfidence::MEDIUM;
-            if (score >= 0.3) return SleepConfidence::LOW;
-            return SleepConfidence::VERY_LOW;
-        }
-    };
-
-} // namespace puuyapu
+    }
+};
+
+/**
+ * @brief User sleep preferences for personalized detection
+ *
+ * Stores user's sleep goals and patterns to improve detection accuracy
+ * through personalization and historical pattern matching.
+ */
+struct UserPreferences {
+    std::chrono::duration<double, std::ratio<3600>> targetSleepHours{8.0};
+    std::chrono::system_clock::time_point preferredBedtime;
+    std::chrono::system_clock::time_point preferredWakeTime;
+    std::chrono::hours minimumSleepDuration{4};
+    bool enableInterruptionTracking{true};
+    bool enableSmartDetection{true};
+
+    // Weekday vs weekend different schedules
+    bool hasWeekendSchedule{false};
+    std::chrono::system_clock::time_point weekendBedtime;
+    std::chrono::system_clock::time_point weekendWakeTime;
+};
+
+/**
+ * @brief High-performance sleep detection engine
+ *
+ * Core class that analyzes interaction patterns to automatically detect
+ * sleep and wake times. Optimized for real-time processing with
+ * microsecond-level performance targets.
+ *
+ * Thread-safe for concurrent access from background services.
+ * Uses memory pooling and cache-friendly algorithms for optimal performance.
+ */
+class SleepDetector {
+private:
+    // Thread-safe event storage with circular buffer for memory efficiency
+    mutable std::mutex eventsMutex_;
+    std::vector<InteractionEvent> recentEvents_;
+    size_t eventWriteIndex_{0};
+    bool eventBufferFull_{false};
+
+    // User preferences (atomic for lock-free reads)
+    std::atomic<UserPreferences*> preferences_;
+
+    // Performance monitoring
+    mutable std::unordered_map<std::string, std::chrono::microseconds> performanceMetrics_;
+    mutable std::mutex metricsMutex_;
+
+    // Cache for expensive calculations
+    mutable std::optional<SleepDetectionResult> cachedResult_;
+    mutable std::chrono::system_clock::time_point lastCacheUpdate_;
+    static constexpr std::chrono::minutes CACHE_VALIDITY_DURATION{5};
+
+public:
+    /**
+     * @brief Construct sleep detector with initial preferences
+     * @param preferences User sleep preferences for personalized detection
+     */
+    explicit SleepDetector(const UserPreferences& preferences);
+
+    /**
+     * @brief Destructor - ensures proper cleanup of resources
+     */
+    ~SleepDetector() noexcept;
+
+    // Disable copy constructor and assignment for performance
+    SleepDetector(const SleepDetector&) = delete;
+    SleepDetector& operator=(const SleepDetector&) = delete;
+
+    // Enable move semantics for efficient transfers
+    SleepDetector(SleepDetector&&) noexcept = default;
+    SleepDetector& operator=(SleepDetector&&) noexcept = default;
+
+    /**
+     * @brief Add new interaction event for processing
+     *
+     * Thread-safe method to add interaction events. Uses circular buffer
+     * to maintain bounded memory usage while preserving recent history.
+     *
+     * @param event New interaction event to process
+     * @performance Target: < 100 microseconds
+     */
+    void addInteractionEvent(const InteractionEvent& event) noexcept;
+
+    /**
+     * @brief Detect sleep period from recent interaction patterns
+     *
+     * Analyzes interaction history to identify sleep start and end times.
+     * Uses multiple algorithms for robust detection including:
+     * - Gap analysis (periods without meaningful interaction)
+     * - Pattern matching against user's historical sleep times
+     * - Interaction type classification (time checks vs active use)
+     *
+     * @param currentTime Current timestamp for real-time analysis
+     * @return Sleep detection result with confidence score
+     * @performance Target: < 1 millisecond for cached results, < 5ms for full analysis
+     */
+    SleepDetectionResult detectSleepPeriod(
+            const std::chrono::system_clock::time_point& currentTime) const;
+
+    /**
+     * @brief Calculate confidence score for a sleep session
+     *
+     * Evaluates detection reliability based on multiple factors:
+     * - Manual confirmation weight (highest)
+     * - Pattern consistency with user's history
+     * - Sleep duration reasonableness
+     * - Number and type of interruptions
+     *
+     * @param session Sleep session to evaluate
+     * @return Confidence score from 0.0 (low) to 1.0 (high)
+     * @performance Target: < 500 microseconds
+     */
+    double calculateConfidenceScore(const SleepDetectionResult& session) const noexcept;
+
+    /**
+     * @brief Update user preferences for personalized detection
+     *
+     * Thread-safe update of user sleep preferences. New preferences
+     * take effect immediately for subsequent detections.
+     *
+     * @param newPreferences Updated user preferences
+     */
+    void updateUserPreferences(const UserPreferences& newPreferences) noexcept;
+
+    /**
+     * @brief Check if user appears to be currently sleeping
+     *
+     * Real-time analysis of recent activity to determine current sleep state.
+     * Useful for live dashboard updates and notifications.
+     *
+     * @param currentTime Current timestamp
+     * @return true if user appears to be sleeping based on recent inactivity
+     * @performance Target: < 100 microseconds
+     */
+    bool isCurrentlyAsleep(const std::chrono::system_clock::time_point& currentTime) const noexcept;
+
+    /**
+     * @brief Get estimated sleep start time if currently sleeping
+     *
+     * Returns best estimate of when current sleep period began.
+     * Returns nullopt if user is not currently sleeping.
+     *
+     * @param currentTime Current timestamp
+     * @return Optional sleep start time
+     */
+    std::optional<std::chrono::system_clock::time_point> getEstimatedSleepStart(
+            const std::chrono::system_clock::time_point& currentTime) const noexcept;
+
+    /**
+     * @brief Clear old interaction data to manage memory usage
+     *
+     * Removes interaction events older than specified cutoff time.
+     * Maintains recent history for pattern analysis while preventing
+     * unbounded memory growth.
+     *
+     * @param cutoffTime Remove events older than this timestamp
+     * @performance Target: < 1 millisecond
+     */
+    void clearOldData(const std::chrono::system_clock::time_point& cutoffTime) noexcept;
+
+    /**
+     * @brief Get performance metrics for monitoring and optimization
+     *
+     * Returns timing information for key operations to enable
+     * performance monitoring and optimization in production.
+     *
+     * @return Map of operation names to average execution times
+     */
+    std::unordered_map<std::string, std::chrono::microseconds> getPerformanceMetrics() const;
+
+    /**
+     * @brief Force manual sleep confirmation for improved accuracy
+     *
+     * Records user's manual "Going to Sleep" confirmation with timestamp.
+     * Manual confirmations receive highest weight in confidence calculations.
+     *
+     * @param timestamp Time when user confirmed going to sleep
+     */
+    void confirmManualSleep(const std::chrono::system_clock::time_point& timestamp) noexcept;
+
+private:
+    // Internal helper methods for sleep detection algorithms
+
+    /**
+     * @brief Find the last meaningful interaction before sleep
+     * @param events Vector of interaction events to analyze
+     * @return Optional timestamp of last meaningful interaction
+     */
+    std::optional<std::chrono::system_clock::time_point> findSleepStartTime(
+            const std::vector<InteractionEvent>& events) const noexcept;
+
+    /**
+     * @brief Find first meaningful interaction after sleep period
+     * @param events Vector of interaction events to analyze
+     * @param sleepStart Estimated sleep start time
+     * @param currentTime Current timestamp for analysis
+     * @return Optional timestamp of sleep end
+     */
+    std::optional<std::chrono::system_clock::time_point> findSleepEndTime(
+            const std::vector<InteractionEvent>& events,
+            const std::chrono::system_clock::time_point& sleepStart,
+            const std::chrono::system_clock::time_point& currentTime) const noexcept;
+
+    /**
+     * @brief Analyze sleep interruptions during sleep period
+     * @param events All interaction events
+     * @param sleepStart Beginning of sleep period
+     * @param sleepEnd End of sleep period
+     * @return Vector of detected sleep interruptions
+     */
+    std::vector<SleepInterruption> analyzeInterruptions(
+            const std::vector<InteractionEvent>& events,
+            const std::chrono::system_clock::time_point& sleepStart,
+            const std::chrono::system_clock::time_point& sleepEnd) const noexcept;
+
+    /**
+     * @brief Check if current detection can use cached result
+     * @param currentTime Current timestamp
+     * @return true if cached result is still valid
+     */
+    bool canUseCachedResult(const std::chrono::system_clock::time_point& currentTime) const noexcept;
+
+    /**
+     * @brief Evaluate how well sleep timing matches user's typical pattern
+     * @param sleepStart Detected sleep start time
+     * @param sleepEnd Detected sleep end time
+     * @return Pattern consistency score 0.0-1.0
+     */
+    double evaluatePatternConsistency(
+            const std::chrono::system_clock::time_point& sleepStart,
+            const std::chrono::system_clock::time_point& sleepEnd) const noexcept;
+
+    /**
+     * @brief Record performance metric for monitoring
+     * @param operation Name of operation being measured
+     * @param duration Time taken for operation
+     */
+    void recordPerformanceMetric(const std::string& operation,
+                                 std::chrono::microseconds duration) const noexcept;
+};
+
+// Global utility functions for time calculations
+
+/**
+ * @brief Calculate duration between two time points in hours
+ * @param start Start time point
+ * @param end End time point
+ * @return Duration in hours as double precision
+ */
+inline double calculateDurationHours(
+        const std::chrono::system_clock::time_point& start,
+        const std::chrono::system_clock::time_point& end) noexcept {
+
+    auto duration = end - start;
+    return std::chrono::duration<double, std::ratio<3600>>(duration).count();
+}
+
+/**
+ * @brief Check if time point falls within a daily time range
+ * @param timePoint Time to check
+ * @param rangeStart Start of daily time range
+ * @param rangeEnd End of daily time range
+ * @return true if time point is within the specified daily range
+ */
+bool isWithinDailyTimeRange(
+        const std::chrono::system_clock::time_point& timePoint,
+        const std::chrono::system_clock::time_point& rangeStart,
+        const std::chrono::system_clock::time_point& rangeEnd) noexcept;
+
+// Logging macros for C++ debug builds
+#ifdef DEBUG
+#define SLEEP_LOG_DEBUG(tag, format, ...) \
+        __android_log_print(ANDROID_LOG_DEBUG, tag, format, ##__VA_ARGS__)
+    #define SLEEP_LOG_INFO(tag, format, ...) \
+        __android_log_print(ANDROID_LOG_INFO, tag, format, ##__VA_ARGS__)
+#else
+#define SLEEP_LOG_DEBUG(tag, format, ...)
+#define SLEEP_LOG_INFO(tag, format, ...)
+#endif
+
+#define SLEEP_LOG_ERROR(tag, format, ...) \
+    __android_log_print(ANDROID_LOG_ERROR, tag, format, ##__VA_ARGS__)

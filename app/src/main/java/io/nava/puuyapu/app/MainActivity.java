@@ -18,8 +18,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
-import android.os.Bundle;
+
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
