@@ -2,415 +2,336 @@
 <resources>
     <!--
     ========================================================================
-    PUÑUY APU - SLEEP TRACKER APPLICATION STRINGS
-    PHASE 1: FOUNDATION & CORE STRUCTURE
+    PUÑUY APU - COMPLETE SLEEP TRACKER APPLICATION STRINGS
+    PRODUCTION-READY INTERNATIONALIZATION WITH C++ PERFORMANCE ENGINE
     ========================================================================
 
-    IMPORTANT NOTES FOR TRANSLATORS:
+    CRITICAL INFORMATION FOR TRANSLATORS:
 
-    1. APP CONTEXT: This is a sleep tracking app that passively monitors when users
-       go to sleep and wake up by detecting phone usage patterns. "Puñuy Apu"
-       means "Sleep Mountain" in Quechua (indigenous language of the Andes).
+    1. APPLICATION CONTEXT:
+       - Puñuy Apu is a high-performance sleep tracking app using AI algorithms
+       - "Puñuy Apu" means "Sleep Mountain" in Quechua (Andean indigenous language)
+       - The app automatically detects sleep patterns through phone usage analysis
+       - Emphasizes privacy: all data stays on device, never shared
 
-    2. TONE GUIDELINES:
-       - Warm, encouraging, and supportive throughout
-       - Never judgmental about sleep habits
-       - Health-focused but not medical/clinical
-       - Personal and friendly, like a caring friend
+    2. TECHNICAL ARCHITECTURE:
+       - C++ native engine for millisecond-precision sleep detection
+       - Real-time analysis of user interaction patterns
+       - Machine learning capabilities for pattern recognition
+       - Zero network transmission - complete privacy
 
-    3. TECHNICAL TERMS: Explain complex concepts in simple language. Users should
-       understand features without technical background.
+    3. TONE GUIDELINES (MAINTAIN CONSISTENTLY):
+       - Warm, encouraging, supportive (like a caring friend)
+       - Health-focused but never medical/clinical
+       - Personal and friendly, avoid corporate language
+       - Celebrating good sleep, understanding about challenges
+       - Privacy-first messaging (build trust)
+       - Performance-focused (emphasize speed and efficiency)
 
-    4. PLACEHOLDERS:
-       - %s = string replacement (times, text)
-       - %d = number replacement (counts, durations)
-       - %1$s, %2$s = multiple ordered replacements
-       DO NOT TRANSLATE THESE MARKERS
+    4. PLACEHOLDER FORMATS (NEVER TRANSLATE THESE):
+       - %s = string replacement (times, text, names)
+       - %d = number replacement (counts, durations, percentages)
+       - %1$s, %2$s, %3$s = multiple ordered string replacements
+       - %1$d, %2$d = multiple ordered number replacements
+       - %.1f, %.2f = decimal numbers with precision (1 or 2 decimal places)
 
-    5. CULTURAL ADAPTATION: Sleep habits vary by culture. Adapt language to be
-       appropriate for local context while keeping core meaning.
+    5. CULTURAL ADAPTATION NOTES:
+       - Sleep patterns vary by culture - adapt language appropriately
+       - Time formats may need localization (12/24 hour)
+       - Consider local sleep terminology and health concepts
+       - Maintain respect for different work schedules (shift workers, etc.)
 
-    6. CHARACTER LIMITS:
-       - Button text: Keep under 20 characters when possible
-       - Notification text: Under 50 characters for titles
-       - Error messages: Clear and concise
+    6. CHARACTER LIMITS (IMPORTANT FOR UI):
+       - Button text: Maximum 25 characters
+       - Notification titles: Maximum 50 characters
+       - Toast messages: Maximum 80 characters
+       - Error messages: Clear and concise, under 100 characters
+
+    7. PERFORMANCE TERMINOLOGY:
+       - "Native engine" = C++ high-performance algorithms
+       - "Real-time" = instantaneous processing
+       - "Microsecond precision" = extremely fast processing
+       - These terms should convey speed and efficiency
+
     ========================================================================
     -->
 
     <!--
     ========================================================================
-    APPLICATION IDENTITY
-    Core app identification strings
+    APPLICATION IDENTITY & BRANDING
+    Core app identification and value proposition
     ========================================================================
     -->
 
     <!--
-    Main application name - appears everywhere
+    Primary application name
     "Puñuy Apu" = "Sleep Mountain" in Quechua
-    Can be localized or kept as-is depending on market
+    Can be localized for markets where pronunciation is difficult,
+    but consider keeping original for brand consistency
     -->
     <string name="app_name">Puñuy Apu</string>
 
     <!--
-    Short tagline for app stores and about screens
-    Communicates core value proposition simply
+    Short tagline for app stores and marketing
+    Emphasizes the personal, caring nature of the app
+    Should feel warm and supportive, not corporate
     -->
     <string name="app_tagline">Your personal sleep companion</string>
 
     <!--
-    Brief description for system dialogs and permissions
-    One-line explanation of what the app does
+    Brief description for permissions and system dialogs
+    Technical but accessible explanation of core functionality
     -->
-    <string name="app_description">Tracks your sleep patterns automatically</string>
+    <string name="app_description">Tracks your sleep patterns automatically using advanced algorithms</string>
+
+    <!--
+    Extended description emphasizing privacy and performance
+    For detailed explanations and about screens
+    -->
+    <string name="app_description_detailed">Puñuy Apu uses high-performance native algorithms to detect your sleep patterns by analyzing phone usage. All data stays on your device for complete privacy.</string>
 
     <!--
     ========================================================================
-    MAIN DASHBOARD (MVP/Phase 1)
-    Primary interface strings for basic sleep tracking
+    WELCOME & ONBOARDING EXPERIENCE
+    First-time user introduction and setup guidance
     ========================================================================
     -->
 
     <!--
-    Welcome message for first-time users
-    Sets expectations and explains core concept
-    Should be encouraging and clear about passive tracking
+    Main welcome title for first launch
+    Should create excitement and trust
     -->
     <string name="welcome_title">Welcome to Puñuy Apu</string>
-    <string name="welcome_message">Track your sleep automatically by detecting when you use your phone. No manual timers needed!</string>
 
     <!--
-    Main dashboard greeting messages
-    Personalizes experience based on time of day
-    Keep friendly and conversational
+    Welcome message explaining core concept
+    Key points: automatic tracking, no manual timers, privacy
+    Should address common concerns about sleep tracking
+    -->
+    <string name="welcome_message">Track your sleep automatically by detecting when you use your phone. No manual timers needed, and all your data stays private on your device.</string>
+
+    <!--
+    Welcome message emphasizing performance
+    Highlights the technical advantages for users who care about efficiency
+    -->
+    <string name="welcome_performance">Powered by a high-speed native engine for real-time sleep detection with microsecond precision.</string>
+
+    <!--
+    Setup completion celebration
+    Positive reinforcement for completing onboarding
+    -->
+    <string name="welcome_complete">You\'re all set! Your sleep tracking starts tonight.</string>
+
+    <!--
+    ========================================================================
+    DASHBOARD - MAIN INTERFACE (MVP CORE)
+    Primary user interface for daily sleep summary
+    ========================================================================
+    -->
+
+    <!--
+    Time-based greeting messages
+    Personalizes experience based on when user opens app
+    Should feel natural and conversational
     -->
     <string name="greeting_morning">Good morning!</string>
     <string name="greeting_afternoon">Good afternoon!</string>
     <string name="greeting_evening">Good evening!</string>
     <string name="greeting_night">Still up?</string>
+    <string name="greeting_late_night">Up late tonight?</string>
 
     <!--
-    Sleep summary when data is available
+    Main sleep summary when data is available
     %1$s = hours slept (e.g., "7.5 hours")
     %2$s = target hours (e.g., "8 hours")
-    Encouraging tone even when target not met
+    Should be encouraging regardless of whether target was met
     -->
     <string name="sleep_summary">You slept %1$s of your %2$s goal</string>
 
     <!--
-    Alternative when target was exceeded
-    Positive reinforcement for good sleep
+    Alternative for when target was exceeded
+    Celebrates good sleep without being preachy
     -->
-    <string name="sleep_summary_exceeded">Great! You slept %1$s, beating your %2$s goal</string>
+    <string name="sleep_summary_exceeded">Excellent! You slept %1$s, beating your %2$s goal</string>
+
+    <!--
+    When sleep was significantly short
+    Supportive tone, not judgmental
+    -->
+    <string name="sleep_summary_short">You got %1$s of sleep. Every bit of rest counts!</string>
 
     <!--
     No sleep data available yet
-    First-time user experience, sets expectations
+    Sets expectations for new users
     -->
     <string name="no_sleep_data">Your sleep summary will appear here after your first night</string>
 
     <!--
     Time remaining in day after waking
     %s = remaining hours (e.g., "16.5 hours")
-    Helps users understand their day length
+    Helps users plan their day
     -->
     <string name="time_remaining">%s left in your day</string>
 
     <!--
+    Current sleep status display
+    Real-time information about sleep state
+    -->
+    <string name="currently_awake">You\'re currently awake</string>
+    <string name="currently_asleep">You appear to be sleeping</string>
+    <string name="sleep_status_unknown">Sleep status unknown</string>
+
+    <!--
     ========================================================================
-    MANUAL SLEEP CONFIRMATION (Core Feature)
+    MANUAL SLEEP CONFIRMATION (CORE FEATURE)
     "Going to Sleep" button and related functionality
     ========================================================================
     -->
 
     <!--
     Primary sleep confirmation button
-    Should be short, clear, and action-oriented
-    Most important button in the app
+    Most important button in the app - should be clear and inviting
     -->
     <string name="btn_going_to_sleep">Going to Sleep</string>
 
     <!--
-    Alternative button text for clarity
-    More explicit about the action
+    Alternative button texts for different contexts
     -->
     <string name="btn_confirm_bedtime">Record Bedtime</string>
+    <string name="btn_sleep_now">Sleep Now</string>
 
     <!--
     Confirmation message after sleep button pressed
-    Reassuring and warm, like saying goodnight
+    Warm, supportive, like saying goodnight to a friend
     -->
     <string name="sleep_confirmed">Bedtime recorded. Sweet dreams!</string>
 
     <!--
-    Confirmation with timestamp
+    Confirmation with specific timestamp
     %s = time recorded (e.g., "11:30 PM")
-    Personal confirmation builds trust
+    Personal confirmation builds trust in the system
     -->
     <string name="sleep_confirmed_time">Bedtime recorded at %s. Sleep well!</string>
 
     <!--
     Suggestion to use manual confirmation
     Appears when app detects possible bedtime
-    Helpful but not pushy
+    Helpful but not pushy or annoying
     -->
     <string name="bedtime_suggestion">Heading to bed? Tap to improve tracking accuracy</string>
 
     <!--
-    ========================================================================
-    SETTINGS & PREFERENCES (Basic Configuration)
-    Core app configuration options
-    ========================================================================
+    Smart suggestion based on patterns
+    More intelligent prompting based on historical data
     -->
-
-    <!--
-    Settings screen title
-    Appears in top bar of settings screen
-    -->
-    <string name="settings_title">Settings</string>
-
-    <!--
-    Sleep goal setting
-    Where users set their target sleep duration
-    Make it clear this is their personal goal
-    -->
-    <string name="setting_sleep_goal">Sleep Goal</string>
-    <string name="setting_sleep_goal_desc">How many hours of sleep do you want each night?</string>
-
-    <!--
-    Preferred wake time setting
-    When user wants to wake up daily
-    -->
-    <string name="setting_wake_time">Preferred Wake Time</string>
-    <string name="setting_wake_time_desc">When do you usually want to wake up?</string>
-
-    <!--
-    Bedtime preference setting
-    When user usually goes to bed
-    -->
-    <string name="setting_bedtime">Usual Bedtime</string>
-    <string name="setting_bedtime_desc">When do you typically go to sleep?</string>
-
-    <!--
-    Weekend vs weekday settings
-    Allow different schedules for work days and weekends
-    -->
-    <string name="setting_weekday_schedule">Weekday Schedule</string>
-    <string name="setting_weekend_schedule">Weekend Schedule</string>
+    <string name="bedtime_suggestion_smart">It\'s around your usual bedtime. Record it?</string>
 
     <!--
     ========================================================================
-    PERMISSIONS & SETUP (Critical for App Function)
-    Permission requests and setup flow
+    SLEEP QUALITY & ANALYSIS (PHASE 2/3 FEATURES)
+    Sleep quality scoring and detailed analysis
     ========================================================================
     -->
 
     <!--
-    Permission request title
-    Clear explanation of why permission is needed
+    Sleep quality rating labels
+    Should be easily understood by general users
+    Avoid medical terminology
     -->
-    <string name="permission_usage_title">Usage Access Required</string>
+    <string name="sleep_quality_excellent">Excellent</string>
+    <string name="sleep_quality_very_good">Very Good</string>
+    <string name="sleep_quality_good">Good</string>
+    <string name="sleep_quality_fair">Fair</string>
+    <string name="sleep_quality_poor">Poor</string>
 
     <!--
-    Permission explanation
-    Explains why app needs usage stats permission
-    Should address privacy concerns and explain benefit
+    Sleep quality descriptions
+    Explain what each rating means
     -->
-    <string name="permission_usage_explanation">Puñuy Apu needs to monitor when you use your phone to detect your sleep patterns. This data stays on your device and is never shared.</string>
+    <string name="sleep_quality_excellent_desc">Uninterrupted sleep with great duration</string>
+    <string name="sleep_quality_good_desc">Solid sleep with minimal disruptions</string>
+    <string name="sleep_quality_fair_desc">Decent sleep but could be improved</string>
+    <string name="sleep_quality_poor_desc">Disrupted or insufficient sleep</string>
 
     <!--
-    Permission button text
-    Action to grant permission
+    Sleep interruption notifications
+    %d = number of interruptions
+    Should be informative, not alarming
     -->
-    <string name="btn_grant_permission">Grant Permission</string>
-
-    <!--
-    Setup complete message
-    Celebrates successful setup
-    -->
-    <string name="setup_complete">All set! Your sleep tracking starts tonight.</string>
-
-    <!--
-    Setup steps for user guidance
-    Clear instructions for first-time setup
-    -->
-    <string name="setup_step_1">Step 1: Grant usage permission</string>
-    <string name="setup_step_2">Step 2: Set your sleep preferences</string>
-    <string name="setup_step_3">Step 3: Start tracking tonight</string>
+    <string name="sleep_interruptions_detected">You had %d sleep interruptions last night</string>
+    <string name="sleep_interruptions_none">No interruptions detected - great sleep!</string>
+    <string name="sleep_interruption_brief">Brief wake-up detected</string>
 
     <!--
     ========================================================================
-    DATA & PRIVACY (User Trust Building)
-    Information about data handling and privacy
-    ========================================================================
-    -->
-
-    <!--
-    Privacy assurance
-    Clear statement about data privacy
-    Builds user trust and addresses concerns
-    -->
-    <string name="privacy_statement">Your sleep data is stored only on your device and never shared with anyone.</string>
-
-    <!--
-    Data export feature
-    Allows users to export their data
-    -->
-    <string name="btn_export_data">Export My Data</string>
-    <string name="export_success">Sleep data exported successfully</string>
-
-    <!--
-    Data deletion option
-    Gives users control over their data
-    -->
-    <string name="btn_delete_data">Delete All Data</string>
-    <string name="delete_confirmation">Are you sure? This will permanently delete all your sleep data.</string>
-
-    <!--
-    ========================================================================
-    NAVIGATION & INTERFACE
-    Basic navigation and UI elements
-    ========================================================================
-    -->
-
-    <!--
-    Main navigation items
-    Primary sections of the app
-    -->
-    <string name="nav_dashboard">Dashboard</string>
-    <string name="nav_history">Sleep Log</string>
-    <string name="nav_settings">Settings</string>
-    <string name="nav_about">About</string>
-
-    <!--
-    Common interface elements
-    Standard UI components
-    -->
-    <string name="btn_save">Save</string>
-    <string name="btn_cancel">Cancel</string>
-    <string name="btn_ok">OK</string>
-    <string name="btn_continue">Continue</string>
-    <string name="btn_back">Back</string>
-    <string name="btn_next">Next</string>
-
-    <!--
-    ========================================================================
-    ERROR HANDLING (User-Friendly Error Messages)
-    Clear, helpful error messages that don't blame the user
-    ========================================================================
-    -->
-
-    <!--
-    Permission denied error
-    When user denies required permissions
-    Should explain impact and offer solution
-    -->
-    <string name="error_permission_denied">Sleep tracking needs usage permission to work. You can enable it anytime in Settings.</string>
-
-    <!--
-    Generic operation failure
-    When something goes wrong but we don't want to scare user
-    -->
-    <string name="error_operation_failed">Something went wrong. Please try again.</string>
-
-    <!--
-    Data save error
-    When sleep data can't be saved
-    -->
-    <string name="error_save_failed">Couldn\'t save your sleep data. Please try again.</string>
-
-    <!--
-    Export error
-    When data export fails
-    -->
-    <string name="error_export_failed">Couldn\'t export your data. Check your storage permissions.</string>
-
-    <!--
-    ========================================================================
-    TIME & DATE FORMATTING (Localization Support)
-    Format strings for displaying times and dates
-    ========================================================================
-    -->
-
-    <!--
-    Time formats for different contexts
-    These may need adjustment based on 12/24 hour local preferences
-    -->
-    <string name="time_format_bedtime">Bedtime: %s</string>
-    <string name="time_format_wake">Wake time: %s</string>
-    <string name="date_format_sleep_log">%s sleep session</string>
-
-    <!--
-    Duration formats
-    For displaying sleep duration in various contexts
-    -->
-    <string name="duration_hours_minutes">%1$d hours %2$d minutes</string>
-    <string name="duration_hours_only">%d hours</string>
-    <string name="duration_minutes_only">%d minutes</string>
-
-    <!--
-    ========================================================================
-    ACCESSIBILITY (Screen Reader Support)
-    Content descriptions for accessibility
-    ========================================================================
-    -->
-
-    <!--
-    Content descriptions for screen readers
-    Help visually impaired users navigate the app
-    -->
-    <string name="accessibility_sleep_button">Record bedtime button</string>
-    <string name="accessibility_settings_button">Open settings</string>
-    <string name="accessibility_sleep_summary">Sleep duration summary</string>
-    <string name="accessibility_time_remaining">Remaining day time</string>
-
-    <!--
-    ========================================================================
-    FUTURE EXPANSION (Phase 2+ Preparation)
-    Strings for features planned in later phases
-    ========================================================================
-    -->
-
-    <!--
-    Sleep quality features (Phase 2/3)
-    Basic sleep quality indicators
-    -->
-    <string name="sleep_quality_good">Good sleep</string>
-    <string name="sleep_quality_fair">Fair sleep</string>
-    <string name="sleep_quality_poor">Poor sleep</string>
-
-    <!--
-    Advanced analytics (Phase 3+)
-    For future trend analysis features
-    -->
-    <string name="weekly_average">Weekly average: %s</string>
-    <string name="sleep_trend_improving">Your sleep is improving!</string>
-    <string name="sleep_trend_declining">Your sleep needs attention</string>
-
-    <!--
-    Machine learning features (Phase 4)
-    For future AI-powered insights
-    -->
-    <string name="ml_learning_enabled">Smart pattern learning enabled</string>
-    <string name="ml_insight_available">New sleep insight available</string>
-
-    <!--
-    ========================================================================
-    PERFORMANCE & NATIVE ENGINE (C++ Integration)
-    Strings related to high-performance native processing
+    REAL-TIME PERFORMANCE & NATIVE ENGINE
+    Messages related to C++ performance and real-time processing
     ========================================================================
     -->
 
     <!--
     Performance status messages
-    Shows users that the app is optimized and responsive
+    Show users that the app is optimized and responsive
+    Technical but accessible language
     -->
     <string name="native_engine_ready">High-performance engine ready</string>
+    <string name="native_engine_initializing">Initializing sleep detection engine…</string>
+    <string name="native_engine_error">Performance engine unavailable</string>
+
+    <!--
+    Real-time processing indicators
+    -->
     <string name="processing_sleep_data">Analyzing sleep patterns…</string>
     <string name="real_time_tracking">Real-time sleep tracking active</string>
+    <string name="real_time_analysis">Instant analysis enabled</string>
+
+    <!--
+    Performance metrics for advanced users
+    %1$d = event count, %2$d = processing time in microseconds
+    -->
+    <string name="performance_metrics">Processed %1$d events in %2$d μs</string>
+    <string name="memory_usage">Memory usage: %d KB</string>
+    <string name="detection_speed">Detection speed: %.2f ms</string>
+
+    <!--
+    ========================================================================
+    SETTINGS & PREFERENCES (USER CONFIGURATION)
+    All user-configurable options and preferences
+    ========================================================================
+    -->
+
+    <!--
+    Settings screen title
+    -->
+    <string name="settings_title">Settings</string>
+
+    <!--
+    Sleep goal configuration
+    Where users set their target sleep duration
+    -->
+    <string name="setting_sleep_goal">Sleep Goal</string>
+    <string name="setting_sleep_goal_desc">How many hours of sleep do you want each night?</string>
+    <string name="setting_sleep_goal_format">%.1f hours</string>
+
+    <!--
+    Time preferences
+    -->
+    <string name="setting_wake_time">Preferred Wake Time</string>
+    <string name="setting_wake_time_desc">When do you usually want to wake up?</string>
+    <string name="setting_bedtime">Usual Bedtime</string>
+    <string name="setting_bedtime_desc">When do you typically go to sleep?</string>
+
+    <!--
+    Advanced detection settings
+    -->
+    <string name="setting_detection_sensitivity">Detection Sensitivity</string>
+    <string name="setting_detection_sensitivity_desc">How sensitive should sleep detection be?</string>
+    <string name="setting_sensitivity_high">High - Detect shorter rest periods</string>
+    <string name="setting_sensitivity_normal">Normal - Standard detection</string>
+    <string name="setting_sensitivity_low">Low - Only detect deep sleep</string>
 
     <!--
     Performance settings
-    Allow users to control performance vs battery trade-offs
     -->
     <string name="setting_performance_mode">Performance Mode</string>
     <string name="setting_performance_mode_desc">Use optimized native algorithms for faster processing</string>
@@ -418,21 +339,573 @@
     <string name="setting_real_time_analysis_desc">Instant sleep pattern detection using C++ engine</string>
 
     <!--
+    Privacy and data settings
+    -->
+    <string name="setting_data_retention">Data Retention</string>
+    <string name="setting_data_retention_desc">How long to keep sleep history</string>
+    <string name="setting_retention_30_days">30 days</string>
+    <string name="setting_retention_90_days">90 days</string>
+    <string name="setting_retention_1_year">1 year</string>
+    <string name="setting_retention_forever">Keep forever</string>
+
+    <!--
     ========================================================================
-    DEVELOPMENT & TESTING (Debug Strings)
-    Strings for development and testing phases
+    PERMISSIONS & SETUP (CRITICAL FUNCTIONALITY)
+    Permission requests and setup flow
     ========================================================================
     -->
 
     <!--
-    Debug information (only shown in debug builds)
-    Help developers test functionality and performance
+    Usage access permission
+    Critical permission for core functionality
     -->
+    <string name="permission_usage_title">Usage Access Required</string>
+    <string name="permission_usage_explanation">Puñuy Apu needs to monitor when you use your phone to detect your sleep patterns. This data stays on your device and is never shared.</string>
+    <string name="permission_usage_benefit">This allows automatic sleep detection without manual timers or buttons.</string>
+
+    <!--
+    Permission button texts
+    -->
+    <string name="btn_grant_permission">Grant Permission</string>
+    <string name="btn_permission_settings">Open Settings</string>
+    <string name="btn_skip_permission">Skip for Now</string>
+
+    <!--
+    Background service permission
+    -->
+    <string name="permission_background_title">Background Processing</string>
+    <string name="permission_background_explanation">Allow Puñuy Apu to run in the background for continuous sleep tracking.</string>
+
+    <!--
+    Setup flow guidance
+    -->
+    <string name="setup_step_1">Step 1: Grant usage permission</string>
+    <string name="setup_step_2">Step 2: Configure sleep preferences</string>
+    <string name="setup_step_3">Step 3: Start tracking tonight</string>
+    <string name="setup_progress">Setup progress: %d of %d</string>
+
+    <!--
+    ========================================================================
+    DATA MANAGEMENT & PRIVACY (TRUST BUILDING)
+    Data handling, export, and privacy features
+    ========================================================================
+    -->
+
+    <!--
+    Privacy assurance statements
+    Build user trust and address privacy concerns
+    -->
+    <string name="privacy_statement">Your sleep data is stored only on your device and never shared with anyone.</string>
+    <string name="privacy_detailed">Puñuy Apu processes all data locally using native algorithms. No internet connection required for core functionality.</string>
+    <string name="privacy_no_cloud">No cloud storage, no data transmission, complete privacy.</string>
+
+    <!--
+    Data export functionality
+    -->
+    <string name="btn_export_data">Export My Data</string>
+    <string name="export_success">Sleep data exported successfully</string>
+    <string name="export_success_location">Sleep data exported to %s</string>
+    <string name="export_format_csv">Export as CSV</string>
+    <string name="export_format_json">Export as JSON</string>
+
+    <!--
+    Data management options
+    -->
+    <string name="btn_delete_data">Delete All Data</string>
+    <string name="btn_clear_old_data">Clear Old Data</string>
+    <string name="delete_confirmation">Are you sure? This will permanently delete all your sleep data.</string>
+    <string name="clear_data_confirmation">Delete sleep data older than %d days?</string>
+
+    <!--
+    Data statistics
+    -->
+    <string name="data_stats_events">%d interaction events stored</string>
+    <string name="data_stats_sessions">%d sleep sessions recorded</string>
+    <string name="data_stats_size">Data size: %.1f MB</string>
+
+    <!--
+    ========================================================================
+    NAVIGATION & INTERFACE (USER EXPERIENCE)
+    Navigation, buttons, and general UI elements
+    ========================================================================
+    -->
+
+    <!--
+    Main navigation sections
+    -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_sleep_log">Sleep Log</string>
+    <string name="nav_analytics">Analytics</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_about">About</string>
+
+    <!--
+    Common button labels
+    -->
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_ok">OK</string>
+    <string name="btn_continue">Continue</string>
+    <string name="btn_back">Back</string>
+    <string name="btn_next">Next</string>
+    <string name="btn_done">Done</string>
+    <string name="btn_retry">Retry</string>
+
+    <!--
+    Loading and progress indicators
+    -->
+    <string name="loading">Loading…</string>
+    <string name="loading_sleep_data">Loading sleep data…</string>
+    <string name="loading_analysis">Analyzing patterns…</string>
+    <string name="processing">Processing…</string>
+
+    <!--
+    ========================================================================
+    ERROR HANDLING (USER-FRIENDLY MESSAGES)
+    Clear, helpful error messages that guide users to solutions
+    ========================================================================
+    -->
+
+    <!--
+    Permission-related errors
+    -->
+    <string name="error_permission_denied">Sleep tracking needs usage permission to work. You can enable it anytime in Settings.</string>
+    <string name="error_permission_required">Usage access permission is required for automatic sleep detection.</string>
+
+    <!--
+    Native engine errors
+    -->
+    <string name="error_native_engine_failed">Performance engine failed to initialize. Please restart the app.</string>
+    <string name="error_native_engine_unavailable">High-performance engine unavailable. Using fallback detection.</string>
+    <string name="error_native_memory">Insufficient memory for optimal performance.</string>
+
+    <!--
+    Data operation errors
+    -->
+    <string name="error_save_failed">Couldn\'t save your sleep data. Please try again.</string>
+    <string name="error_load_failed">Unable to load sleep history. Data may be corrupted.</string>
+    <string name="error_export_failed">Couldn\'t export your data. Check your storage permissions.</string>
+    <string name="error_import_failed">Failed to import sleep data. Invalid file format.</string>
+
+    <!--
+    Detection errors
+    -->
+    <string name="error_detection_failed">Sleep detection temporarily unavailable. Please try again.</string>
+    <string name="error_insufficient_data">Not enough data for accurate sleep detection.</string>
+    <string name="error_invalid_timerange">Invalid time range selected.</string>
+
+    <!--
+    Generic operation errors
+    -->
+    <string name="error_operation_failed">Something went wrong. Please try again.</string>
+    <string name="error_network_unavailable">Network unavailable. Using offline mode.</string>
+    <string name="error_storage_full">Device storage is full. Please free up space.</string>
+
+    <!--
+    ========================================================================
+    TIME & DATE FORMATTING (LOCALIZATION SUPPORT)
+    Format strings for displaying times, dates, and durations
+    ========================================================================
+    -->
+
+    <!--
+    Time format strings
+    These may need adjustment based on 12/24 hour local preferences
+    -->
+    <string name="time_format_bedtime">Bedtime: %s</string>
+    <string name="time_format_wake">Wake time: %s</string>
+    <string name="time_format_duration">Duration: %s</string>
+    <string name="time_format_current">Current time: %s</string>
+
+    <!--
+    Date format strings for sleep log
+    -->
+    <string name="date_format_sleep_log">%s sleep session</string>
+    <string name="date_format_today">Today</string>
+    <string name="date_format_yesterday">Yesterday</string>
+    <string name="date_format_this_week">This week</string>
+    <string name="date_format_last_week">Last week</string>
+
+    <!--
+    Duration formats for different contexts
+    -->
+    <string name="duration_hours_minutes">%1$d hours %2$d minutes</string>
+    <string name="duration_hours_only">%d hours</string>
+    <string name="duration_minutes_only">%d minutes</string>
+    <string name="duration_short_format">%1$dh %2$dm</string>
+
+    <!--
+    Relative time formats
+    -->
+    <string name="time_ago_minutes">%d minutes ago</string>
+    <string name="time_ago_hours">%d hours ago</string>
+    <string name="time_ago_days">%d days ago</string>
+    <string name="time_remaining_minutes">%d minutes remaining</string>
+    <string name="time_remaining_hours">%d hours remaining</string>
+
+    <!--
+    ========================================================================
+    SLEEP LOG & HISTORY (DETAILED VIEW)
+    Historical sleep data presentation
+    ========================================================================
+    -->
+
+    <!--
+    Sleep log screen title and navigation
+    -->
+    <string name="sleep_log_title">Sleep History</string>
+    <string name="sleep_log_empty">No sleep sessions recorded yet</string>
+    <string name="sleep_log_loading">Loading sleep history…</string>
+
+    <!--
+    Sleep session details
+    %1$s = date, %2$s = duration, %3$s = quality
+    -->
+    <string name="sleep_session_summary">%1$s: %2$s sleep (%3$s quality)</string>
+    <string name="sleep_session_confidence">Confidence: %s</string>
+    <string name="sleep_session_manual">Manually confirmed</string>
+    <string name="sleep_session_automatic">Automatically detected</string>
+
+    <!--
+    Sleep trends and patterns
+    -->
+    <string name="trend_improving">Your sleep is improving!</string>
+    <string name="trend_stable">Your sleep pattern is consistent</string>
+    <string name="trend_declining">Your sleep needs attention</string>
+    <string name="trend_insufficient_data">More data needed for trend analysis</string>
+
+    <!--
+    Weekly and monthly summaries
+    -->
+    <string name="weekly_average">Weekly average: %s</string>
+    <string name="monthly_average">Monthly average: %s</string>
+    <string name="weekly_total">Total sleep this week: %s</string>
+    <string name="sleep_debt">Sleep debt: %s</string>
+    <string name="sleep_surplus">Sleep surplus: %s</string>
+
+    <!--
+    ========================================================================
+    ANALYTICS & INSIGHTS (ADVANCED FEATURES)
+    Data analysis and personalized insights
+    ========================================================================
+    -->
+
+    <!--
+    Analytics screen title
+    -->
+    <string name="analytics_title">Sleep Analytics</string>
+    <string name="analytics_overview">Overview</string>
+    <string name="analytics_trends">Trends</string>
+    <string name="analytics_patterns">Patterns</string>
+
+    <!--
+    Pattern recognition insights
+    -->
+    <string name="pattern_consistent_bedtime">You have a consistent bedtime</string>
+    <string name="pattern_irregular_schedule">Your sleep schedule varies significantly</string>
+    <string name="pattern_weekend_shift">You sleep later on weekends</string>
+    <string name="pattern_improving_duration">Your sleep duration is improving</string>
+
+    <!--
+    Personalized recommendations
+    -->
+    <string name="recommendation_earlier_bedtime">Try going to bed 30 minutes earlier</string>
+    <string name="recommendation_consistent_schedule">Maintain a consistent sleep schedule</string>
+    <string name="recommendation_reduce_interruptions">Minimize phone use before bed</string>
+    <string name="recommendation_good_habits">Keep up your excellent sleep habits!</string>
+
+    <!--
+    Statistical insights
+    -->
+    <string name="stat_average_bedtime">Average bedtime: %s</string>
+    <string name="stat_average_wake_time">Average wake time: %s</string>
+    <string name="stat_sleep_efficiency">Sleep efficiency: %.1f%%</string>
+    <string name="stat_nights_tracked">Nights tracked: %d</string>
+
+    <!--
+    ========================================================================
+    NOTIFICATIONS (BACKGROUND ALERTS)
+    Notification messages for background service
+    ========================================================================
+    -->
+
+    <!--
+    Foreground service notification
+    Persistent notification while tracking is active
+    -->
+    <string name="notification_tracking_title">Sleep tracking active</string>
+    <string name="notification_tracking_text">Puñuy Apu is monitoring your sleep patterns</string>
+    <string name="notification_tracking_channel">Sleep Tracking</string>
+
+    <!--
+    Sleep detection notifications
+    -->
+    <string name="notification_sleep_detected_title">Sleep detected</string>
+    <string name="notification_sleep_detected_text">Good night! Sleep tracking started at %s</string>
+    <string name="notification_wake_detected_title">Good morning!</string>
+    <string name="notification_wake_detected_text">You slept for %s last night</string>
+
+    <!--
+    Reminder notifications
+    -->
+    <string name="notification_bedtime_reminder_title">Bedtime reminder</string>
+    <string name="notification_bedtime_reminder_text">It\'s almost your usual bedtime</string>
+    <string name="notification_confirm_sleep_title">Confirm bedtime</string>
+    <string name="notification_confirm_sleep_text">Tap to record your bedtime for better accuracy</string>
+
+    <!--
+    Notification channels (Android 8+)
+    -->
+    <string name="notification_channel_tracking">Sleep Tracking</string>
+    <string name="notification_channel_tracking_desc">Ongoing sleep monitoring notifications</string>
+    <string name="notification_channel_alerts">Sleep Alerts</string>
+    <string name="notification_channel_alerts_desc">Sleep detection and reminder notifications</string>
+
+    <!--
+    ========================================================================
+    ACCESSIBILITY (SCREEN READER SUPPORT)
+    Content descriptions and accessibility labels
+    ========================================================================
+    -->
+
+    <!--
+    Content descriptions for UI elements
+    Help visually impaired users navigate the app
+    -->
+    <string name="accessibility_sleep_button">Record bedtime button</string>
+    <string name="accessibility_settings_button">Open settings menu</string>
+    <string name="accessibility_sleep_summary">Sleep duration summary</string>
+    <string name="accessibility_time_remaining">Remaining day time display</string>
+    <string name="accessibility_sleep_quality">Sleep quality indicator</string>
+    <string name="accessibility_performance_meter">Performance metrics display</string>
+
+    <!--
+    Screen reader announcements
+    -->
+    <string name="accessibility_sleep_recorded">Bedtime recorded successfully</string>
+    <string name="accessibility_data_loaded">Sleep data loaded</string>
+    <string name="accessibility_analysis_complete">Sleep analysis complete</string>
+
+    <!--
+    ========================================================================
+    ABOUT & HELP (INFORMATION SCREENS)
+    App information, help, and support content
+    ========================================================================
+    -->
+
+    <!--
+    About screen content
+    -->
+    <string name="about_title">About Puñuy Apu</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_description">Puñuy Apu uses advanced native algorithms to automatically track your sleep patterns while keeping all data private on your device.</string>
+
+    <!--
+    Technical information
+    -->
+    <string name="about_technology">Powered by high-performance C++ algorithms for real-time sleep detection</string>
+    <string name="about_privacy">100% local processing - no data ever leaves your device</string>
+    <string name="about_accuracy">Sub-millisecond processing for maximum accuracy</string>
+
+    <!--
+    Help and support
+    -->
+    <string name="help_title">Help &amp; Support</string>
+    <string name="help_getting_started">Getting Started</string>
+    <string name="help_permissions">Why Permissions Are Needed</string>
+    <string name="help_accuracy">Improving Accuracy</string>
+    <string name="help_privacy">Privacy &amp; Data</string>
+    <string name="help_troubleshooting">Troubleshooting</string>
+
+    <!--
+    Credits and acknowledgments
+    -->
+    <string name="credits_title">Credits</string>
+    <string name="credits_development">Developed by Puñuy Apu Team</string>
+    <string name="credits_native_engine">High-performance C++ engine</string>
+    <string name="credits_quechua">\"Puñuy Apu\" means \"Sleep Mountain\" in Quechua</string>
+
+    <!--
+    ========================================================================
+    FUTURE FEATURES (PHASE 4+ PREPARATION)
+    Strings for advanced features planned in later development phases
+    ========================================================================
+    -->
+
+    <!--
+    Machine learning features (Phase 4)
+    -->
+    <string name="ml_learning_enabled">Smart pattern learning enabled</string>
+    <string name="ml_learning_disabled">Using standard detection algorithms</string>
+    <string name="ml_insight_available">New sleep insight available</string>
+    <string name="ml_pattern_learned">Sleep pattern learned and applied</string>
+    <string name="ml_accuracy_improved">Detection accuracy improved by %.1f%%</string>
+
+    <!--
+    Advanced analytics (Phase 4+)
+    -->
+    <string name="advanced_analytics_title">Advanced Analytics</string>
+    <string name="sleep_stage_analysis">Sleep stage analysis</string>
+    <string name="circadian_rhythm">Circadian rhythm tracking</string>
+    <string name="environmental_factors">Environmental factor analysis</string>
+
+    <!--
+    Integration features (Future)
+    -->
+    <string name="integration_health_app">Connect to health apps</string>
+    <string name="integration_smart_alarm">Smart alarm integration</string>
+    <string name="integration_fitness_tracker">Fitness tracker sync</string>
+
+    <!--
+    ========================================================================
+    PERFORMANCE & DEVELOPMENT (DEBUG STRINGS)
+    Development, testing, and performance monitoring strings
+    Only visible in debug builds or developer mode
+    ========================================================================
+    -->
+
+    <!--
+    Debug information for development and testing
+    -->
+    <string name="debug_mode_enabled">Debug mode enabled</string>
     <string name="debug_last_interaction">Last interaction: %s</string>
     <string name="debug_sleep_detection">Sleep detection: %s</string>
-    <string name="debug_confidence_score">Confidence: %s</string>
-    <string name="debug_processing_time">Processing time: %s μs</string>
-    <string name="debug_native_memory">Native memory: %s KB</string>
-    <string name="debug_detection_algorithm">Algorithm: C++ Native Engine</string>
+    <string name="debug_confidence_score">Confidence: %.2f</string>
+    <string name="debug_processing_time">Processing time: %d μs</string>
+    <string name="debug_native_memory">Native memory: %d KB</string>
+    <string name="debug_event_count">Events in buffer: %d</string>
+    <string name="debug_detection_algorithm">Algorithm: C++ Native Engine v%.1f</string>
+
+    <!--
+    Performance monitoring
+    -->
+    <string name="perf_initialization_time">Initialization: %d ms</string>
+    <string name="perf_detection_speed">Detection speed: %.2f ms</string>
+    <string name="perf_memory_usage">Memory usage: %.1f MB</string>
+    <string name="perf_battery_impact">Battery impact: %.1f%%</string>
+    <string name="perf_accuracy_rate">Accuracy rate: %.1f%%</string>
+
+    <!--
+    Testing and validation
+    -->
+    <string name="test_mode_active">Test mode active</string>
+    <string name="validation_passed">Validation passed</string>
+    <string name="validation_failed">Validation failed: %s</string>
+    <string name="benchmark_result">Benchmark: %d ops/sec</string>
+
+    <!--
+    ========================================================================
+    ADVANCED CONFIGURATION (EXPERT USERS)
+    Advanced settings for power users and developers
+    ========================================================================
+    -->
+
+    <!--
+    Advanced detection parameters
+    -->
+    <string name="advanced_settings_title">Advanced Settings</string>
+    <string name="setting_detection_threshold">Detection Threshold</string>
+    <string name="setting_detection_threshold_desc">Minimum confidence required for automatic detection</string>
+    <string name="setting_gap_duration">Minimum Sleep Gap</string>
+    <string name="setting_gap_duration_desc">Minimum interaction gap to consider as sleep</string>
+    <string name="setting_time_check_threshold">Time Check Duration</string>
+    <string name="setting_time_check_threshold_desc">Maximum duration to classify as time check</string>
+
+    <!--
+    Performance tuning
+    -->
+    <string name="setting_performance_profile">Performance Profile</string>
+    <string name="setting_profile_battery_saver">Battery Saver</string>
+    <string name="setting_profile_balanced">Balanced</string>
+    <string name="setting_profile_performance">Maximum Performance</string>
+    <string name="setting_real_time_processing">Real-time Processing</string>
+    <string name="setting_batch_processing">Batch Processing</string>
+
+    <!--
+    Data management advanced options
+    -->
+    <string name="setting_data_compression">Data Compression</string>
+    <string name="setting_data_compression_desc">Compress stored data to save space</string>
+    <string name="setting_export_format">Default Export Format</string>
+    <string name="setting_backup_frequency">Automatic Backup</string>
+    <string name="setting_backup_disabled">Disabled</string>
+    <string name="setting_backup_daily">Daily</string>
+    <string name="setting_backup_weekly">Weekly</string>
+
+    <!--
+    ========================================================================
+    CONTEXTUAL HELP & TOOLTIPS
+    Inline help and explanatory text for complex features
+    ========================================================================
+    -->
+
+    <!--
+    Feature explanations
+    -->
+    <string name="tooltip_sleep_confidence">Confidence indicates how certain we are about this sleep detection</string>
+    <string name="tooltip_sleep_quality">Quality is based on duration, interruptions, and timing consistency</string>
+    <string name="tooltip_real_time_tracking">Real-time tracking uses the native engine for instant analysis</string>
+    <string name="tooltip_manual_confirmation">Manual confirmation improves accuracy for future detections</string>
+
+    <!--
+    Technical explanations
+    -->
+    <string name="explain_native_engine">The native engine processes data using optimized C++ algorithms for maximum speed and efficiency</string>
+    <string name="explain_privacy">All processing happens on your device - no data is ever transmitted to external servers</string>
+    <string name="explain_accuracy">Accuracy improves over time as the system learns your specific sleep patterns</string>
+
+    <!--
+    ========================================================================
+    ERROR RECOVERY & USER GUIDANCE
+    Messages that help users recover from errors and edge cases
+    ========================================================================
+    -->
+
+    <!--
+    Recovery suggestions
+    -->
+    <string name="recovery_restart_app">Try restarting the app</string>
+    <string name="recovery_check_permissions">Check that all permissions are granted</string>
+    <string name="recovery_free_storage">Free up device storage space</string>
+    <string name="recovery_restart_device">Try restarting your device</string>
+    <string name="recovery_manual_backup">Consider manually backing up your data</string>
+
+    <!--
+    Edge case handling
+    -->
+    <string name="edge_case_no_data">No interaction data available for analysis</string>
+    <string name="edge_case_insufficient_data">Need more data for reliable detection</string>
+    <string name="edge_case_irregular_pattern">Irregular sleep pattern detected - using adaptive algorithms</string>
+    <string name="edge_case_long_gap">Unusually long gap detected - possible device shutdown?</string>
+
+    <!--
+    ========================================================================
+    SUCCESS MESSAGES & POSITIVE REINFORCEMENT
+    Encouraging messages that celebrate user achievements
+    ========================================================================
+    -->
+
+    <!--
+    Achievement celebrations
+    -->
+    <string name="achievement_week_consistent">Great! 7 days of consistent sleep tracking</string>
+    <string name="achievement_goal_met">Congratulations! You met your sleep goal</string>
+    <string name="achievement_pattern_stable">Your sleep pattern is becoming more stable</string>
+    <string name="achievement_quality_improving">Your sleep quality is improving!</string>
+
+    <!--
+    Milestone messages
+    -->
+    <string name="milestone_first_week">First week of sleep tracking complete!</string>
+    <string name="milestone_first_month">One month of sleep data collected</string>
+    <string name="milestone_consistent_schedule">You\'ve maintained a consistent schedule for %d days</string>
+
+    <!--
+    Positive reinforcement
+    -->
+    <string name="positive_good_sleep">Excellent sleep last night!</string>
+    <string name="positive_consistent">Your consistency is paying off</string>
+    <string name="positive_improvement">Keep up the great progress</string>
+    <string name="positive_goal_achieved">Sleep goal achieved! Well done</string>
 
 </resources>
