@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.puuyapu'
+    namespace 'io.nava.puuyapu.app'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.puuyapu"
+        applicationId "io.nava.puuyapu.app"
         minSdk 31
         targetSdk 36
         versionCode 1
